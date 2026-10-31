@@ -1,0 +1,125 @@
+import { supabase } from './supabase'
+
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+/**
+ * Cliente HTTP que adjunta el token de Supabase a cada petición al backend.
+ */
+async function authHeader(): Promise<Record<string, string>> {
+  if (!supabase) {
+    // Modo desarrollo sin Supabase: token de prueba aceptado por el backend.
+    return { Authorization: 'Bearer dev-token' }
+  }
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(await authHeader()),
+    ...(options.headers ?? {}),
+  }
+  const res = await fetch(`${API_URL}${path}`, { ...options, headers })
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}))
+    throw new Error(detail.detail ?? `Error ${res.status}`)
+  }
+  if (res.status === 204) return undefined as T
+  return res.json() as Promise<T>
+}
+
+export const api = {
+  // Asignaturas
+  listSubjects: () => request<Subject[]>('/subjects'),
+  createSubject: (body: { name: string; term?: string; color?: string }) =>
+    request<Subject>('/subjects', { method: 'POST', body: JSON.stringify(body) }),
+  deleteSubject: (id: string) =>
+    request<void>(`/subjects/${id}`, { method: 'DELETE' }),
+
+  // Documentos
+  listDocuments: (subjectId?: string) =>
+    request<DocumentItem[]>(
+      `/documents${subjectId ? `?subject_id=${subjectId}` : ''}`,
+    ),
+  uploadDocument: async (subjectId: string, file: File) => {
+    const form = new FormData()
+    form.append('subject_id', subjectId)
+    form.append('file', file)
+    const res = await fetch(`${API_URL}/documents`, {
+      method: 'POST',
+      headers: await authHeader(),
+      body: form,
+    })
+    if (!res.ok) throw new Error('No se pudo subir el documento')
+    return res.json() as Promise<DocumentItem>
+  },
+
+  // Tutor
+  askTutor: (question: string, subjectId?: string) =>
+    request<TutorAnswer>('/tutor/ask', {
+      method: 'POST',
+      body: JSON.stringify({ question, subject_id: subjectId }),
+    }),
+
+  // Cuestionarios
+  createQuiz: (body: {
+    subject_id: string
+    title: string
+    num_questions: number
+    difficulty: string
+    document_id?: string
+  }) => request<Quiz>('/quizzes', { method: 'POST', body: JSON.stringify(body) }),
+  submitAttempt: (body: {
+    quiz_id: string
+    answers: { question_id: string; given_answer: string }[]
+  }) =>
+    request<AttemptResult>('/quizzes/attempts', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+}
+
+// ----------------------------- Tipos -----------------------------
+export interface Subject {
+  id: string
+  name: string
+  term?: string
+  color?: string
+}
+
+export interface DocumentItem {
+  id: string
+  subject_id: string
+  name: string
+  status: string
+  page_count?: number
+}
+
+export interface TutorAnswer {
+  answer: string
+  sources: { document_id?: string; page?: number }[]
+}
+
+export interface Question {
+  id: string
+  statement: string
+  type: string
+  options?: string[]
+  explanation?: string
+}
+
+export interface Quiz {
+  id: string
+  subject_id: string
+  title: string
+  questions: Question[]
+}
+
+export interface AttemptResult {
+  attempt_id: string
+  score: number
+  correct: number
+  total: number
+}
