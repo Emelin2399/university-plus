@@ -3,13 +3,17 @@
 La service key NUNCA se expone al frontend. Toda operación con permisos
 elevados pasa por aquí, aplicando siempre el filtro por `user_id`.
 """
-from functools import lru_cache
+from __future__ import annotations
 
-from app.core.config import Settings
+from functools import lru_cache
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.core.config import Settings
 
 
 @lru_cache
-def get_supabase(settings: Settings):
+def get_supabase(settings: "Settings"):
     """Devuelve un cliente de Supabase con la service role key.
 
     Se importa perezosamente para no exigir la dependencia en modo mock.

@@ -69,10 +69,13 @@ university-plus/
 
 ## 🚀 Puesta en marcha
 
-Consulta las guías de cada parte:
+👉 **Empieza por la guía rápida: [`QUICKSTART.md`](QUICKSTART.md)**
+
+Guías detalladas por parte:
 - Backend → [`backend/README.md`](backend/README.md)
 - Frontend → [`frontend/README.md`](frontend/README.md)
 - Base de datos → [`database/DATABASE_DESIGN.md`](database/DATABASE_DESIGN.md)
+- Conexión con Supabase → [`database/SUPABASE_SETUP.md`](database/SUPABASE_SETUP.md)
 
 ## 🎯 Alcance del MVP
 

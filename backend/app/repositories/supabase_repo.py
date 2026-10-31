@@ -13,9 +13,13 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from typing import TYPE_CHECKING
+
 from anyio import to_thread
 
-from app.core.config import Settings
+if TYPE_CHECKING:
+    from app.core.config import Settings
+
 from app.repositories.base import (
     ChunkRepository,
     DocumentRepository,

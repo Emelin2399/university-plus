@@ -9,15 +9,16 @@ El objetivo es que el resto del backend no dependa del proveedor concreto.
 from __future__ import annotations
 
 import hashlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from app.core.config import Settings
+if TYPE_CHECKING:
+    from app.core.config import Settings
 
 EMBEDDING_DIM = 1536
 
 
 class AIService:
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: "Settings"):
         self.settings = settings
         self.provider = settings.ai_provider
 
