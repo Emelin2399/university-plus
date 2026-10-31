@@ -98,6 +98,20 @@ export const api = {
       `/progress${subjectId ? `?subject_id=${subjectId}` : ''}`,
     ),
 
+  // EXPLORA PLUS
+  exploreSearch: (query: string, limit = 8) =>
+    request<ExploreResult>('/explore/search', {
+      method: 'POST',
+      body: JSON.stringify({ query, limit }),
+    }),
+  exploreHistory: () => request<ExploreSearchSummary[]>('/explore/history'),
+  getExploreSearch: (id: string) => request<ExploreResult>(`/explore/${id}`),
+  updateResourceStatus: (id: string, resource_index: number, status: string) =>
+    request<ExploreResult>(`/explore/${id}/resource`, {
+      method: 'PATCH',
+      body: JSON.stringify({ resource_index, status }),
+    }),
+
   // MIS NOTAS PLUS
   listNotes: (params?: { subject_id?: string; q?: string }) => {
     const qs = new URLSearchParams()
@@ -209,4 +223,38 @@ export interface ProgressReport {
     subject_id?: string | null
     score: number
   }[]
+}
+
+export interface AcademicResource {
+  title: string
+  authors: string[]
+  year?: number | null
+  venue?: string | null
+  doi?: string | null
+  url?: string | null
+  source: string
+  resource_type: string
+  open_access?: boolean | null
+  is_example: boolean
+  status: 'pending' | 'reviewing' | 'understood'
+}
+
+export interface LearningStep {
+  position: number
+  step: string
+  label: string
+  resources: AcademicResource[]
+}
+
+export interface ExploreResult {
+  id: string
+  query: string
+  resources: AcademicResource[]
+  path: LearningStep[]
+}
+
+export interface ExploreSearchSummary {
+  id: string
+  query: string
+  created_at?: string
 }

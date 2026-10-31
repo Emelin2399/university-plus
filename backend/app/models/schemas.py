@@ -187,3 +187,48 @@ class ProgressReport(BaseModel):
     by_subject: list[SubjectProgress]
     evolution: list[EvolutionPoint]
     to_reinforce: list[ReinforceItem]
+
+
+# --------------------------- EXPLORA PLUS ----------------------
+class ExploreQuery(BaseModel):
+    query: str = Field(min_length=2, max_length=1000)
+    limit: int = Field(default=8, ge=1, le=20)
+
+
+class AcademicResource(BaseModel):
+    title: str
+    authors: list[str] = []
+    year: int | None = None
+    venue: str | None = None
+    doi: str | None = None
+    url: str | None = None
+    source: str = "mock"
+    resource_type: str = "article"
+    open_access: bool | None = None
+    is_example: bool = False
+    status: str = "pending"  # pending | reviewing | understood
+
+
+class LearningStep(BaseModel):
+    position: int
+    step: str
+    label: str
+    resources: list[AcademicResource] = []
+
+
+class ExploreResult(BaseModel):
+    id: str
+    query: str
+    resources: list[AcademicResource]
+    path: list[LearningStep]
+
+
+class ExploreSearchSummary(BaseModel):
+    id: str
+    query: str
+    created_at: datetime | None = None
+
+
+class ResourceStatusUpdate(BaseModel):
+    resource_index: int = Field(ge=0)
+    status: Literal["pending", "reviewing", "understood"]

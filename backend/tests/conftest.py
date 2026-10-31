@@ -71,4 +71,5 @@ def repos():
     memory._attempts.clear()
     memory._activities.clear()
     memory._notes.clear()
+    memory._searches.clear()
     return build_memory_bundle()

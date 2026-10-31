@@ -34,7 +34,9 @@ Arquitectura web cliente-servidor:
 
 ## 🧩 Módulos
 
-| # | Módulo | Estado MVP |
+**Los 8 módulos de la propuesta están implementados** (backend + frontend + tests).
+
+| # | Módulo | Estado |
 |---|--------|:---:|
 | 1 | Panel principal del estudiante | ✅ |
 | 2 | Biblioteca inteligente de documentos (archivos **y enlaces**) | ✅ |
@@ -42,7 +44,7 @@ Arquitectura web cliente-servidor:
 | 4 | Generador de evaluaciones y simulacros | ✅ |
 | 5 | Planificador académico | ✅ |
 | 6 | Seguimiento del aprendizaje | ✅ |
-| 7 | EXPLORA PLUS (investigación académica) | 🔜 v2 |
+| 7 | EXPLORA PLUS (investigación académica) | ✅ |
 | 8 | MIS NOTAS PLUS (apuntes) | ✅ |
 
 ## 📁 Estructura del repositorio
@@ -51,18 +53,23 @@ Arquitectura web cliente-servidor:
 university-plus/
 ├── backend/            # API FastAPI (Python)
 │   ├── app/
-│   │   ├── api/            # Routers por módulo
+│   │   ├── api/            # Routers: subjects, documents, tutor, quizzes,
+│   │   │                   #          activities, notes, progress, explore
 │   │   ├── core/           # Config, seguridad
 │   │   ├── models/         # Esquemas Pydantic
 │   │   ├── repositories/   # Capa de persistencia (memoria | Supabase)
-│   │   ├── services/       # IA/RAG, procesamiento de docs, ingesta de URLs
+│   │   ├── services/       # IA/RAG, docs, URLs, progreso, fuentes académicas
 │   │   └── main.py
 │   ├── scripts/            # check_setup.py, smoke_test.py
-│   ├── tests/              # Suite pytest (44 pruebas)
+│   ├── tests/              # Suite pytest (95 pruebas)
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/           # SPA React + Vite + TS
 │   ├── src/
+│   │   ├── pages/          # Una página por módulo
+│   │   ├── components/     # Layout y UI
+│   │   ├── context/        # AuthContext
+│   │   └── lib/            # api.ts, supabase.ts
 │   └── package.json
 ├── database/           # Esquema SQL, diseño y guía de Supabase
 │   ├── schema.sql

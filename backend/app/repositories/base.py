@@ -137,6 +137,30 @@ class ProgressRepository(ABC):
         ...
 
 
+class ExploreRepository(ABC):
+    """EXPLORA PLUS: historial de búsquedas y recursos con su estado."""
+
+    @abstractmethod
+    async def save_search(
+        self, user_id: str, data: dict[str, Any]
+    ) -> dict[str, Any]: ...
+
+    @abstractmethod
+    async def list_searches(self, user_id: str) -> list[dict[str, Any]]: ...
+
+    @abstractmethod
+    async def get_search(
+        self, user_id: str, search_id: str
+    ) -> dict[str, Any] | None: ...
+
+    @abstractmethod
+    async def update_resource_status(
+        self, user_id: str, search_id: str, resource_index: int, status: str
+    ) -> dict[str, Any] | None:
+        """Actualiza el estado de un recurso: pending|reviewing|understood."""
+        ...
+
+
 class RepositoryBundle:
     """Agrupa todos los repositorios de una implementación concreta."""
 
@@ -149,6 +173,7 @@ class RepositoryBundle:
         activities: "ActivityRepository",
         notes: "NoteRepository",
         progress: "ProgressRepository",
+        explore: "ExploreRepository",
     ):
         self.subjects = subjects
         self.documents = documents
@@ -157,3 +182,4 @@ class RepositoryBundle:
         self.activities = activities
         self.notes = notes
         self.progress = progress
+        self.explore = explore

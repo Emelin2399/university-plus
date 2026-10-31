@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     openai_chat_model: str = "gpt-4o-mini"
     openai_embedding_model: str = "text-embedding-3-small"
 
+    # EXPLORA PLUS — fuentes académicas: "" (auto), "mock", "openalex", "crossref"
+    explora_provider: str = ""
+
     # Límites
     max_upload_mb: int = 20
     max_documents_per_user: int = 50

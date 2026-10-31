@@ -14,6 +14,7 @@ from app.repositories.base import (
     ActivityRepository,
     ChunkRepository,
     DocumentRepository,
+    ExploreRepository,
     NoteRepository,
     ProgressRepository,
     QuizRepository,
@@ -43,6 +44,7 @@ _quizzes: dict[str, dict] = {}
 _attempts: dict[str, dict] = {}
 _activities: dict[str, dict] = {}
 _notes: dict[str, dict] = {}
+_searches: dict[str, dict] = {}
 
 
 class MemorySubjectRepository(SubjectRepository):
@@ -298,6 +300,44 @@ class MemoryProgressRepository(ProgressRepository):
         return items
 
 
+class MemoryExploreRepository(ExploreRepository):
+    async def save_search(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+        search = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "query": data["query"],
+            "resources": data.get("resources", []),
+            "path": data.get("path", []),
+            "created_at": _now(),
+        }
+        _searches[search["id"]] = search
+        return search
+
+    async def list_searches(self, user_id: str) -> list[dict[str, Any]]:
+        items = [s for s in _searches.values() if s["user_id"] == user_id]
+        return sorted(items, key=lambda s: s["created_at"], reverse=True)
+
+    async def get_search(
+        self, user_id: str, search_id: str
+    ) -> dict[str, Any] | None:
+        search = _searches.get(search_id)
+        if not search or search["user_id"] != user_id:
+            return None
+        return search
+
+    async def update_resource_status(
+        self, user_id: str, search_id: str, resource_index: int, status: str
+    ) -> dict[str, Any] | None:
+        search = _searches.get(search_id)
+        if not search or search["user_id"] != user_id:
+            return None
+        resources = search["resources"]
+        if resource_index < 0 or resource_index >= len(resources):
+            return None
+        resources[resource_index]["status"] = status
+        return search
+
+
 def build_memory_bundle() -> RepositoryBundle:
     return RepositoryBundle(
         subjects=MemorySubjectRepository(),
@@ -307,4 +347,5 @@ def build_memory_bundle() -> RepositoryBundle:
         activities=MemoryActivityRepository(),
         notes=MemoryNoteRepository(),
         progress=MemoryProgressRepository(),
+        explore=MemoryExploreRepository(),
     )

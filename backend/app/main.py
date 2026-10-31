@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import (
     activities,
     documents,
+    explore,
     health,
     notes,
     progress,
@@ -42,6 +43,7 @@ app.include_router(quizzes.router)
 app.include_router(activities.router)
 app.include_router(notes.router)
 app.include_router(progress.router)
+app.include_router(explore.router)
 
 
 @app.get("/", tags=["root"])

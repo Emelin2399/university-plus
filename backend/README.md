@@ -71,6 +71,7 @@ Consulta la guía completa de conexión en [`../database/SUPABASE_SETUP.md`](../
 | GET/POST/PATCH/DELETE | `/activities` | Planificador académico |
 | GET/POST/PATCH/DELETE | `/notes` | MIS NOTAS PLUS |
 | GET | `/progress` | Seguimiento del aprendizaje |
+| POST/GET/PATCH | `/explore` | EXPLORA PLUS (fuentes académicas) |
 
 ## Seguridad
 
@@ -85,11 +86,12 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-La suite (78 pruebas) cubre: procesamiento de documentos (troceo, extracción
+La suite (95 pruebas) cubre: procesamiento de documentos (troceo, extracción
 de HTML, validación de URLs), ingesta desde enlaces, servicio de IA en modo
 mock (embeddings, tutor RAG, generación de cuestionarios), la capa de
-repositorios, el planificador, las notas y el análisis de progreso
-(seguimiento del aprendizaje) — todo con foco en el **aislamiento por usuario**.
+repositorios, el planificador, las notas, el análisis de progreso y EXPLORA
+PLUS (fuentes académicas y ruta de aprendizaje) — todo con foco en el
+**aislamiento por usuario**.
 
 Las pruebas usan el almacén en memoria y el modo mock, así que **no requieren
 Supabase ni red**. Son `async def` gestionadas por `pytest-asyncio`.

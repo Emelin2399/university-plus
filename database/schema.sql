@@ -250,6 +250,19 @@ create index if not exists idx_notes_user on notes (user_id);
 create index if not exists idx_notes_subject on notes (subject_id);
 
 -- ============================================================
+-- 11c. EXPLORE_SEARCHES (EXPLORA PLUS — historial de exploración)
+-- ============================================================
+create table if not exists explore_searches (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references profiles (id) on delete cascade,
+  query       text not null,
+  resources   jsonb not null default '[]'::jsonb,
+  path        jsonb not null default '[]'::jsonb,
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_explore_user on explore_searches (user_id);
+
+-- ============================================================
 -- 12. STUDY_SESSIONS (registro opcional)
 -- ============================================================
 create table if not exists study_sessions (
@@ -285,6 +298,7 @@ alter table quiz_attempts   enable row level security;
 alter table attempt_answers enable row level security;
 alter table activities      enable row level security;
 alter table notes           enable row level security;
+alter table explore_searches enable row level security;
 alter table chat_messages   enable row level security;
 alter table study_sessions  enable row level security;
 
@@ -301,6 +315,7 @@ create policy "quizzes_owner"         on quizzes         for all using (auth.uid
 create policy "attempts_owner"        on quiz_attempts   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "activities_owner"      on activities      for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "notes_owner"           on notes           for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "explore_owner"         on explore_searches for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "chat_owner"            on chat_messages   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "sessions_owner"        on study_sessions  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 

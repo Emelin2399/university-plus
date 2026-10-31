@@ -24,6 +24,7 @@ from app.repositories.base import (
     ActivityRepository,
     ChunkRepository,
     DocumentRepository,
+    ExploreRepository,
     NoteRepository,
     ProgressRepository,
     QuizRepository,
@@ -519,6 +520,82 @@ class SupabaseProgressRepository(ProgressRepository):
         return flattened
 
 
+class SupabaseExploreRepository(ExploreRepository):
+    def __init__(self, client, settings: Settings):
+        self.client = client
+        self.settings = settings
+
+    async def save_search(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+        row = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "query": data["query"],
+            "resources": data.get("resources", []),
+            "path": data.get("path", []),
+        }
+
+        def _q():
+            return self.client.table("explore_searches").insert(row).execute()
+
+        res = await to_thread.run_sync(_q)
+        return (res.data or [row])[0]
+
+    async def list_searches(self, user_id: str) -> list[dict[str, Any]]:
+        def _q():
+            return (
+                self.client.table("explore_searches")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
+
+        res = await to_thread.run_sync(_q)
+        return res.data or []
+
+    async def get_search(
+        self, user_id: str, search_id: str
+    ) -> dict[str, Any] | None:
+        def _q():
+            return (
+                self.client.table("explore_searches")
+                .select("*")
+                .eq("id", search_id)
+                .eq("user_id", user_id)
+                .single()
+                .execute()
+            )
+
+        try:
+            res = await to_thread.run_sync(_q)
+        except Exception:
+            return None
+        return res.data
+
+    async def update_resource_status(
+        self, user_id: str, search_id: str, resource_index: int, status: str
+    ) -> dict[str, Any] | None:
+        search = await self.get_search(user_id, search_id)
+        if not search:
+            return None
+        resources = search.get("resources") or []
+        if resource_index < 0 or resource_index >= len(resources):
+            return None
+        resources[resource_index]["status"] = status
+
+        def _q():
+            return (
+                self.client.table("explore_searches")
+                .update({"resources": resources})
+                .eq("id", search_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+
+        await to_thread.run_sync(_q)
+        return search
+
+
 def build_supabase_bundle(settings: Settings) -> RepositoryBundle:
     from app.services.supabase_client import get_supabase
 
@@ -531,4 +608,5 @@ def build_supabase_bundle(settings: Settings) -> RepositoryBundle:
         activities=SupabaseActivityRepository(client, settings),
         notes=SupabaseNoteRepository(client, settings),
         progress=SupabaseProgressRepository(client, settings),
+        explore=SupabaseExploreRepository(client, settings),
     )
