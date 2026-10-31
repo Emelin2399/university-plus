@@ -41,7 +41,7 @@ Arquitectura web cliente-servidor:
 | 3 | Tutor virtual con IA (RAG) | ✅ |
 | 4 | Generador de evaluaciones y simulacros | ✅ |
 | 5 | Planificador académico | ✅ |
-| 6 | Seguimiento del aprendizaje | 🔜 v2 |
+| 6 | Seguimiento del aprendizaje | ✅ |
 | 7 | EXPLORA PLUS (investigación académica) | 🔜 v2 |
 | 8 | MIS NOTAS PLUS (apuntes) | ✅ |
 

@@ -153,3 +153,37 @@ class Note(BaseModel):
     is_favorite: bool = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
+
+
+# --------------------------- Progress (Seguimiento) ------------
+class ProgressSummary(BaseModel):
+    total_attempts: int
+    average_score: float
+    best_score: float
+
+
+class SubjectProgress(BaseModel):
+    subject_id: str | None = None
+    subject_name: str
+    attempts: int
+    average_score: float
+
+
+class EvolutionPoint(BaseModel):
+    quiz_title: str
+    score: float
+    finished_at: str
+
+
+class ReinforceItem(BaseModel):
+    quiz_id: str | None = None
+    quiz_title: str
+    subject_id: str | None = None
+    score: float
+
+
+class ProgressReport(BaseModel):
+    summary: ProgressSummary
+    by_subject: list[SubjectProgress]
+    evolution: list[EvolutionPoint]
+    to_reinforce: list[ReinforceItem]

@@ -25,6 +25,7 @@ from app.repositories.base import (
     ChunkRepository,
     DocumentRepository,
     NoteRepository,
+    ProgressRepository,
     QuizRepository,
     RepositoryBundle,
     SubjectRepository,
@@ -481,6 +482,43 @@ class SupabaseNoteRepository(NoteRepository):
         return bool(res.data)
 
 
+class SupabaseProgressRepository(ProgressRepository):
+    def __init__(self, client, settings: Settings):
+        self.client = client
+        self.settings = settings
+
+    async def attempts(
+        self, user_id: str, subject_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        # Une intentos con su cuestionario para obtener asignatura y título.
+        def _q():
+            query = (
+                self.client.table("quiz_attempts")
+                .select("id, quiz_id, score, finished_at, quizzes!inner(subject_id, title)")
+                .eq("user_id", user_id)
+            )
+            if subject_id:
+                query = query.eq("quizzes.subject_id", subject_id)
+            return query.execute()
+
+        res = await to_thread.run_sync(_q)
+        rows = res.data or []
+        # Aplanar la relación anidada a la forma que espera progress_analysis.
+        flattened: list[dict[str, Any]] = []
+        for r in rows:
+            quiz = r.get("quizzes") or {}
+            flattened.append(
+                {
+                    "quiz_id": r.get("quiz_id"),
+                    "subject_id": quiz.get("subject_id"),
+                    "quiz_title": quiz.get("title"),
+                    "score": r.get("score"),
+                    "finished_at": r.get("finished_at"),
+                }
+            )
+        return flattened
+
+
 def build_supabase_bundle(settings: Settings) -> RepositoryBundle:
     from app.services.supabase_client import get_supabase
 
@@ -492,4 +530,5 @@ def build_supabase_bundle(settings: Settings) -> RepositoryBundle:
         quizzes=SupabaseQuizRepository(client, settings),
         activities=SupabaseActivityRepository(client, settings),
         notes=SupabaseNoteRepository(client, settings),
+        progress=SupabaseProgressRepository(client, settings),
     )

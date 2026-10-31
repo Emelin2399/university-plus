@@ -126,6 +126,17 @@ class NoteRepository(ABC):
     async def delete(self, user_id: str, note_id: str) -> bool: ...
 
 
+class ProgressRepository(ABC):
+    """Seguimiento del aprendizaje: agrega resultados de intentos."""
+
+    @abstractmethod
+    async def attempts(
+        self, user_id: str, subject_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Devuelve los intentos del usuario (opcionalmente por asignatura)."""
+        ...
+
+
 class RepositoryBundle:
     """Agrupa todos los repositorios de una implementación concreta."""
 
@@ -137,6 +148,7 @@ class RepositoryBundle:
         quizzes: QuizRepository,
         activities: "ActivityRepository",
         notes: "NoteRepository",
+        progress: "ProgressRepository",
     ):
         self.subjects = subjects
         self.documents = documents
@@ -144,3 +156,4 @@ class RepositoryBundle:
         self.quizzes = quizzes
         self.activities = activities
         self.notes = notes
+        self.progress = progress

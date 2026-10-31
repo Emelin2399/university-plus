@@ -9,6 +9,7 @@ import TutorPage from './pages/TutorPage'
 import QuizzesPage from './pages/QuizzesPage'
 import PlannerPage from './pages/PlannerPage'
 import NotesPage from './pages/NotesPage'
+import ProgressPage from './pages/ProgressPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading, devMode } = useAuth()
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="tutor" element={<TutorPage />} />
         <Route path="quizzes" element={<QuizzesPage />} />
         <Route path="planner" element={<PlannerPage />} />
+        <Route path="progress" element={<ProgressPage />} />
         <Route path="notes" element={<NotesPage />} />
       </Route>
     </Routes>

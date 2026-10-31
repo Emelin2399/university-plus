@@ -10,6 +10,7 @@ from app.api import (
     documents,
     health,
     notes,
+    progress,
     quizzes,
     subjects,
     tutor,
@@ -40,6 +41,7 @@ app.include_router(tutor.router)
 app.include_router(quizzes.router)
 app.include_router(activities.router)
 app.include_router(notes.router)
+app.include_router(progress.router)
 
 
 @app.get("/", tags=["root"])

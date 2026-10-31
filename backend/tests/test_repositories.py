@@ -130,3 +130,32 @@ class TestQuizzes:
         )
         assert attempt["user_id"] == "u1"
         assert attempt["score"] == 80.0
+
+
+class TestProgressRepository:
+    async def test_attempts_isolated_by_user(self, repos):
+        await repos.quizzes.create_attempt(
+            "u1", {"id": "a1", "quiz_id": "q1", "subject_id": "s1", "score": 70.0}
+        )
+        await repos.quizzes.create_attempt(
+            "u2", {"id": "a2", "quiz_id": "q2", "subject_id": "s2", "score": 90.0}
+        )
+        u1_attempts = await repos.progress.attempts("u1")
+        assert len(u1_attempts) == 1
+        assert u1_attempts[0]["score"] == 70.0
+
+    async def test_filter_by_subject(self, repos):
+        await repos.quizzes.create_attempt(
+            "u1", {"id": "a1", "quiz_id": "q1", "subject_id": "s1", "score": 70.0}
+        )
+        await repos.quizzes.create_attempt(
+            "u1", {"id": "a2", "quiz_id": "q2", "subject_id": "s2", "score": 80.0}
+        )
+        assert len(await repos.progress.attempts("u1", "s1")) == 1
+
+    async def test_attempts_have_timestamp(self, repos):
+        await repos.quizzes.create_attempt(
+            "u1", {"id": "a1", "quiz_id": "q1", "subject_id": "s1", "score": 70.0}
+        )
+        attempts = await repos.progress.attempts("u1")
+        assert attempts[0]["finished_at"] is not None

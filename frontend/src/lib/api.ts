@@ -92,6 +92,12 @@ export const api = {
   deleteActivity: (id: string) =>
     request<void>(`/activities/${id}`, { method: 'DELETE' }),
 
+  // Seguimiento del aprendizaje
+  getProgress: (subjectId?: string) =>
+    request<ProgressReport>(
+      `/progress${subjectId ? `?subject_id=${subjectId}` : ''}`,
+    ),
+
   // MIS NOTAS PLUS
   listNotes: (params?: { subject_id?: string; q?: string }) => {
     const qs = new URLSearchParams()
@@ -186,4 +192,21 @@ export interface Note {
   is_favorite: boolean
   created_at?: string
   updated_at?: string
+}
+
+export interface ProgressReport {
+  summary: { total_attempts: number; average_score: number; best_score: number }
+  by_subject: {
+    subject_id?: string | null
+    subject_name: string
+    attempts: number
+    average_score: number
+  }[]
+  evolution: { quiz_title: string; score: number; finished_at: string }[]
+  to_reinforce: {
+    quiz_id?: string | null
+    quiz_title: string
+    subject_id?: string | null
+    score: number
+  }[]
 }

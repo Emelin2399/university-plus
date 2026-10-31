@@ -8,6 +8,7 @@ const navItems = [
   { to: '/tutor', label: 'Tutor IA' },
   { to: '/quizzes', label: 'Cuestionarios' },
   { to: '/planner', label: 'Planificador' },
+  { to: '/progress', label: 'Mi Progreso' },
   { to: '/notes', label: 'Mis Notas' },
 ]
 

@@ -15,6 +15,7 @@ from app.repositories.base import (
     ChunkRepository,
     DocumentRepository,
     NoteRepository,
+    ProgressRepository,
     QuizRepository,
     RepositoryBundle,
     SubjectRepository,
@@ -180,7 +181,7 @@ class MemoryQuizRepository(QuizRepository):
     async def create_attempt(
         self, user_id: str, attempt: dict[str, Any]
     ) -> dict[str, Any]:
-        attempt = {**attempt, "user_id": user_id}
+        attempt = {**attempt, "user_id": user_id, "finished_at": _now()}
         _attempts[attempt["id"]] = attempt
         return attempt
 
@@ -287,6 +288,16 @@ class MemoryNoteRepository(NoteRepository):
         return True
 
 
+class MemoryProgressRepository(ProgressRepository):
+    async def attempts(
+        self, user_id: str, subject_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        items = [a for a in _attempts.values() if a["user_id"] == user_id]
+        if subject_id:
+            items = [a for a in items if a.get("subject_id") == subject_id]
+        return items
+
+
 def build_memory_bundle() -> RepositoryBundle:
     return RepositoryBundle(
         subjects=MemorySubjectRepository(),
@@ -295,4 +306,5 @@ def build_memory_bundle() -> RepositoryBundle:
         quizzes=MemoryQuizRepository(),
         activities=MemoryActivityRepository(),
         notes=MemoryNoteRepository(),
+        progress=MemoryProgressRepository(),
     )

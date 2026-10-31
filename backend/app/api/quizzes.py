@@ -94,7 +94,15 @@ async def submit_attempt(
     attempt_id = str(uuid.uuid4())
     await repos.quizzes.create_attempt(
         user.id,
-        {"id": attempt_id, "quiz_id": payload.quiz_id, "score": score},
+        {
+            "id": attempt_id,
+            "quiz_id": payload.quiz_id,
+            "subject_id": quiz.get("subject_id"),
+            "quiz_title": quiz.get("title"),
+            "score": score,
+            "correct": correct,
+            "total": total_questions,
+        },
     )
 
     return AttemptResult(
