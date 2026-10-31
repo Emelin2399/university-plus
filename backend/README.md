@@ -33,12 +33,29 @@ Esto permite ejecutar y probar todo el flujo (asignaturas → documentos → tut
 
 ```
 app/
-├── api/           # Routers por módulo (subjects, documents, tutor, quizzes, health)
-├── core/          # config.py (settings), security.py (auth)
-├── models/        # schemas.py (Pydantic)
-├── services/      # ai_service.py (IA/RAG), supabase_client.py
-└── main.py        # App FastAPI
+├── api/              # Routers por módulo (subjects, documents, tutor, quizzes, health)
+├── core/             # config.py (settings), security.py (auth)
+├── models/           # schemas.py (Pydantic)
+├── repositories/     # Capa de persistencia (patrón repositorio)
+│   ├── base.py       # Interfaces abstractas
+│   ├── memory.py     # Implementación en memoria (dev)
+│   ├── supabase_repo.py  # Implementación Supabase (producción)
+│   └── factory.py    # Selección automática según config
+├── services/         # ai_service.py (IA/RAG), document_processing.py, supabase_client.py
+└── main.py           # App FastAPI
 ```
+
+## Capa de repositorios
+
+Los routers **no conocen** el almacenamiento concreto: dependen de las
+interfaces de `repositories/base.py`. El `factory` elige la implementación:
+
+- Si hay `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` → **Supabase** (Postgres + Storage + RPC vectorial).
+- Si no → **memoria** (ideal para desarrollo y pruebas sin credenciales).
+
+Para pasar de dev a producción **no se cambia código**, solo variables de entorno.
+
+Consulta la guía completa de conexión en [`../database/SUPABASE_SETUP.md`](../database/SUPABASE_SETUP.md).
 
 ## Endpoints principales (MVP)
 
