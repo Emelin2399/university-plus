@@ -79,6 +79,8 @@ class MemoryDocumentRepository(DocumentRepository):
             "subject_id": data["subject_id"],
             "user_id": user_id,
             "name": data["name"],
+            "source_type": data.get("source_type", "file"),
+            "source_url": data.get("source_url"),
             "storage_path": data.get("storage_path", ""),
             "status": data.get("status", "processing"),
             "mime_type": data.get("mime_type"),

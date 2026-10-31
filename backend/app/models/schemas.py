@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 
 # --------------------------- Subjects ---------------------------
@@ -29,10 +29,18 @@ class Document(BaseModel):
     subject_id: str
     name: str
     status: str
+    source_type: str = "file"  # "file" | "link"
+    source_url: str | None = None
     mime_type: str | None = None
     size_bytes: int | None = None
     page_count: int | None = None
     created_at: datetime | None = None
+
+
+class DocumentFromUrl(BaseModel):
+    subject_id: str
+    url: HttpUrl
+    name: str | None = None
 
 
 # --------------------------- Tutor ------------------------------

@@ -63,7 +63,8 @@ Consulta la guía completa de conexión en [`../database/SUPABASE_SETUP.md`](../
 |--------|------|--------|
 | GET | `/health` | Salud del servicio |
 | GET/POST/DELETE | `/subjects` | Asignaturas |
-| GET/POST/DELETE | `/documents` | Biblioteca de documentos |
+| GET/POST/DELETE | `/documents` | Biblioteca de documentos (archivo PDF) |
+| POST | `/documents/from-url` | Agregar documento desde un enlace (PDF o web) |
 | POST | `/tutor/ask` | Tutor virtual (RAG) |
 | POST/GET | `/quizzes` | Cuestionarios |
 | POST | `/quizzes/attempts` | Enviar intento y calcular resultado |
@@ -73,6 +74,21 @@ Consulta la guía completa de conexión en [`../database/SUPABASE_SETUP.md`](../
 - Autenticación por **JWT de Supabase** (`Authorization: Bearer <token>`).
 - La **service key** de Supabase y la **API key** de IA viven solo aquí, nunca en el frontend.
 - Validación de tipo y tamaño de archivos en la carga.
+
+## Pruebas
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+La suite (44 pruebas) cubre: procesamiento de documentos (troceo, extracción
+de HTML, validación de URLs), ingesta desde enlaces, servicio de IA en modo
+mock (embeddings, tutor RAG, generación de cuestionarios) y la capa de
+repositorios (con foco en el **aislamiento por usuario**).
+
+Las pruebas usan el almacén en memoria y el modo mock, así que **no requieren
+Supabase ni red**. Son `async def` gestionadas por `pytest-asyncio`.
 
 ## Nota sobre persistencia
 

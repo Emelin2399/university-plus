@@ -52,9 +52,19 @@ export const api = {
       headers: await authHeader(),
       body: form,
     })
-    if (!res.ok) throw new Error('No se pudo subir el documento')
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}))
+      throw new Error(detail.detail ?? 'No se pudo subir el documento')
+    }
     return res.json() as Promise<DocumentItem>
   },
+  addDocumentFromUrl: (body: { subject_id: string; url: string; name?: string }) =>
+    request<DocumentItem>('/documents/from-url', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  deleteDocument: (id: string) =>
+    request<void>(`/documents/${id}`, { method: 'DELETE' }),
 
   // Tutor
   askTutor: (question: string, subjectId?: string) =>
@@ -94,6 +104,8 @@ export interface DocumentItem {
   subject_id: string
   name: string
   status: string
+  source_type?: 'file' | 'link'
+  source_url?: string
   page_count?: number
 }
 

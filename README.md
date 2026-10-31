@@ -37,7 +37,7 @@ Arquitectura web cliente-servidor:
 | # | Módulo | Estado MVP |
 |---|--------|:---:|
 | 1 | Panel principal del estudiante | ✅ |
-| 2 | Biblioteca inteligente de documentos | ✅ |
+| 2 | Biblioteca inteligente de documentos (archivos **y enlaces**) | ✅ |
 | 3 | Tutor virtual con IA (RAG) | ✅ |
 | 4 | Generador de evaluaciones y simulacros | ✅ |
 | 5 | Planificador académico | 🔜 v2 |
@@ -51,19 +51,24 @@ Arquitectura web cliente-servidor:
 university-plus/
 ├── backend/            # API FastAPI (Python)
 │   ├── app/
-│   │   ├── api/        # Routers por módulo
-│   │   ├── core/       # Config, seguridad
-│   │   ├── models/     # Esquemas Pydantic
-│   │   ├── services/   # Lógica de negocio e IA/RAG
+│   │   ├── api/            # Routers por módulo
+│   │   ├── core/           # Config, seguridad
+│   │   ├── models/         # Esquemas Pydantic
+│   │   ├── repositories/   # Capa de persistencia (memoria | Supabase)
+│   │   ├── services/       # IA/RAG, procesamiento de docs, ingesta de URLs
 │   │   └── main.py
+│   ├── scripts/            # check_setup.py, smoke_test.py
+│   ├── tests/              # Suite pytest (44 pruebas)
 │   ├── requirements.txt
 │   └── .env.example
 ├── frontend/           # SPA React + Vite + TS
 │   ├── src/
 │   └── package.json
-├── database/           # Esquema SQL, migraciones y diseño
+├── database/           # Esquema SQL, diseño y guía de Supabase
 │   ├── schema.sql
-│   └── DATABASE_DESIGN.md
+│   ├── DATABASE_DESIGN.md
+│   └── SUPABASE_SETUP.md
+├── QUICKSTART.md
 └── README.md
 ```
 

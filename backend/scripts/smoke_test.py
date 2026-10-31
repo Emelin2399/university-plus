@@ -112,6 +112,26 @@ def main() -> int:
             step_fail(f"Subir documento falló: {exc}")
             failures += 1
 
+        # 2b. Agregar documento desde una URL (página web)
+        try:
+            r = client.post(
+                f"{base}/documents/from-url",
+                headers=headers,
+                json={
+                    "subject_id": subject["id"],
+                    "url": "https://example.com/",
+                },
+            )
+            if r.status_code == 201:
+                link_doc = r.json()
+                step_ok(f"Documento desde URL agregado: {link_doc['id']} "
+                        f"(source={link_doc.get('source_type')})")
+            else:
+                # Puede fallar si el entorno no tiene salida a internet.
+                print(f"  (omitido: /documents/from-url devolvió {r.status_code})")
+        except Exception as exc:
+            print(f"  (omitido: /documents/from-url no disponible: {exc})")
+
         # 3. Preguntar al tutor
         try:
             r = client.post(

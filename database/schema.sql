@@ -70,7 +70,10 @@ create table if not exists documents (
   subject_id    uuid not null references subjects (id) on delete cascade,
   user_id       uuid not null references profiles (id) on delete cascade,
   name          text not null,
-  storage_path  text not null,
+  source_type   text not null default 'file'
+                check (source_type in ('file', 'link')),
+  source_url    text,
+  storage_path  text,
   mime_type     text,
   size_bytes    bigint,
   status        text not null default 'pending'

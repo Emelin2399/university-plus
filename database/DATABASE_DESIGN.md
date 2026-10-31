@@ -56,12 +56,17 @@ Extiende `auth.users`. Identidad y datos del estudiante.
 | subject_id | uuid (FK → subjects) | |
 | user_id | uuid (FK → profiles) | Denormalizado para RLS |
 | name | text | Nombre visible |
-| storage_path | text | Ruta en Supabase Storage |
-| mime_type | text | `application/pdf`, etc. |
+| source_type | text | `file` (archivo subido) \| `link` (URL) |
+| source_url | text | URL de origen (solo si `source_type = link`) |
+| storage_path | text (nullable) | Ruta en Supabase Storage (solo archivos) |
+| mime_type | text | `application/pdf`, `text/html`, etc. |
 | size_bytes | bigint | Validación de tamaño |
 | status | text | `pending` \| `processing` \| `ready` \| `error` |
 | page_count | int | |
 | created_at / updated_at | timestamptz | |
+
+> El material puede provenir de un **archivo** o de un **enlace** (PDF remoto o
+> página web). En ambos casos el contenido se trocea e indexa igual para el RAG.
 
 ### `document_chunks` — Fragmentos para RAG
 | Columna | Tipo | Notas |
