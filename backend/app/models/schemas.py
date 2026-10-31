@@ -101,3 +101,55 @@ class AttemptResult(BaseModel):
     score: float
     correct: int
     total: int
+
+
+# --------------------------- Activities (Planificador) ---------
+class ActivityCreate(BaseModel):
+    subject_id: str
+    title: str = Field(min_length=1, max_length=300)
+    due_date: datetime | None = None
+    status: Literal["pending", "in_progress", "done"] = "pending"
+
+
+class ActivityUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=300)
+    due_date: datetime | None = None
+    status: Literal["pending", "in_progress", "done"] | None = None
+    subject_id: str | None = None
+
+
+class Activity(BaseModel):
+    id: str
+    subject_id: str
+    title: str
+    due_date: datetime | None = None
+    status: str
+    created_at: datetime | None = None
+
+
+# --------------------------- Notes (MIS NOTAS PLUS) -------------
+class NoteCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    content: str = ""
+    subject_id: str | None = None
+    topic: str | None = None
+    is_favorite: bool = False
+
+
+class NoteUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=300)
+    content: str | None = None
+    subject_id: str | None = None
+    topic: str | None = None
+    is_favorite: bool | None = None
+
+
+class Note(BaseModel):
+    id: str
+    subject_id: str | None = None
+    title: str
+    content: str = ""
+    topic: str | None = None
+    is_favorite: bool = False
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

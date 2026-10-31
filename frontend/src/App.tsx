@@ -7,6 +7,8 @@ import SubjectsPage from './pages/SubjectsPage'
 import DocumentsPage from './pages/DocumentsPage'
 import TutorPage from './pages/TutorPage'
 import QuizzesPage from './pages/QuizzesPage'
+import PlannerPage from './pages/PlannerPage'
+import NotesPage from './pages/NotesPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { session, loading, devMode } = useAuth()
@@ -32,6 +34,8 @@ export default function App() {
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="tutor" element={<TutorPage />} />
         <Route path="quizzes" element={<QuizzesPage />} />
+        <Route path="planner" element={<PlannerPage />} />
+        <Route path="notes" element={<NotesPage />} />
       </Route>
     </Routes>
   )

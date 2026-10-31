@@ -233,6 +233,23 @@ create table if not exists chat_messages (
 create index if not exists idx_chat_user on chat_messages (user_id);
 
 -- ============================================================
+-- 11b. NOTES (MIS NOTAS PLUS — apuntes personales)
+-- ============================================================
+create table if not exists notes (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references profiles (id) on delete cascade,
+  subject_id  uuid references subjects (id) on delete set null,
+  title       text not null,
+  content     text not null default '',
+  topic       text,
+  is_favorite boolean not null default false,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists idx_notes_user on notes (user_id);
+create index if not exists idx_notes_subject on notes (subject_id);
+
+-- ============================================================
 -- 12. STUDY_SESSIONS (registro opcional)
 -- ============================================================
 create table if not exists study_sessions (
@@ -251,6 +268,7 @@ create trigger trg_profiles_updated   before update on profiles   for each row e
 create trigger trg_subjects_updated    before update on subjects    for each row execute function set_updated_at();
 create trigger trg_documents_updated   before update on documents   for each row execute function set_updated_at();
 create trigger trg_activities_updated  before update on activities  for each row execute function set_updated_at();
+create trigger trg_notes_updated       before update on notes       for each row execute function set_updated_at();
 
 -- ============================================================
 -- ROW LEVEL SECURITY
@@ -266,6 +284,7 @@ alter table questions       enable row level security;
 alter table quiz_attempts   enable row level security;
 alter table attempt_answers enable row level security;
 alter table activities      enable row level security;
+alter table notes           enable row level security;
 alter table chat_messages   enable row level security;
 alter table study_sessions  enable row level security;
 
@@ -281,6 +300,7 @@ create policy "summaries_owner"       on summaries       for all using (auth.uid
 create policy "quizzes_owner"         on quizzes         for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "attempts_owner"        on quiz_attempts   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "activities_owner"      on activities      for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "notes_owner"           on notes           for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "chat_owner"            on chat_messages   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "sessions_owner"        on study_sessions  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 

@@ -11,8 +11,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.repositories.base import (
+    ActivityRepository,
     ChunkRepository,
     DocumentRepository,
+    NoteRepository,
     QuizRepository,
     RepositoryBundle,
     SubjectRepository,
@@ -38,6 +40,8 @@ _documents: dict[str, dict] = {}
 _chunks: dict[str, list[dict]] = {}  # document_id -> chunks
 _quizzes: dict[str, dict] = {}
 _attempts: dict[str, dict] = {}
+_activities: dict[str, dict] = {}
+_notes: dict[str, dict] = {}
 
 
 class MemorySubjectRepository(SubjectRepository):
@@ -181,10 +185,114 @@ class MemoryQuizRepository(QuizRepository):
         return attempt
 
 
+class MemoryActivityRepository(ActivityRepository):
+    async def list(
+        self, user_id: str, subject_id: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        items = [a for a in _activities.values() if a["user_id"] == user_id]
+        if subject_id:
+            items = [a for a in items if a["subject_id"] == subject_id]
+        if status:
+            items = [a for a in items if a["status"] == status]
+        # Orden por fecha límite (los sin fecha al final)
+        return sorted(items, key=lambda a: (a.get("due_date") is None, a.get("due_date") or ""))
+
+    async def create(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+        activity = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "subject_id": data["subject_id"],
+            "title": data["title"],
+            "due_date": data.get("due_date"),
+            "status": data.get("status", "pending"),
+            "created_at": _now(),
+            "updated_at": _now(),
+        }
+        _activities[activity["id"]] = activity
+        return activity
+
+    async def update(
+        self, user_id: str, activity_id: str, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        activity = _activities.get(activity_id)
+        if not activity or activity["user_id"] != user_id:
+            return None
+        for field in ("title", "due_date", "status", "subject_id"):
+            if field in data and data[field] is not None:
+                activity[field] = data[field]
+        activity["updated_at"] = _now()
+        return activity
+
+    async def delete(self, user_id: str, activity_id: str) -> bool:
+        activity = _activities.get(activity_id)
+        if not activity or activity["user_id"] != user_id:
+            return False
+        del _activities[activity_id]
+        return True
+
+
+class MemoryNoteRepository(NoteRepository):
+    async def list(
+        self, user_id: str, subject_id: str | None = None, query: str | None = None
+    ) -> list[dict[str, Any]]:
+        items = [n for n in _notes.values() if n["user_id"] == user_id]
+        if subject_id:
+            items = [n for n in items if n["subject_id"] == subject_id]
+        if query:
+            q = query.lower()
+            items = [
+                n for n in items
+                if q in n["title"].lower() or q in n["content"].lower()
+            ]
+        return sorted(items, key=lambda n: n["updated_at"], reverse=True)
+
+    async def get(self, user_id: str, note_id: str) -> dict[str, Any] | None:
+        note = _notes.get(note_id)
+        if not note or note["user_id"] != user_id:
+            return None
+        return note
+
+    async def create(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+        note = {
+            "id": str(uuid.uuid4()),
+            "user_id": user_id,
+            "subject_id": data.get("subject_id"),
+            "title": data["title"],
+            "content": data.get("content", ""),
+            "topic": data.get("topic"),
+            "is_favorite": data.get("is_favorite", False),
+            "created_at": _now(),
+            "updated_at": _now(),
+        }
+        _notes[note["id"]] = note
+        return note
+
+    async def update(
+        self, user_id: str, note_id: str, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        note = _notes.get(note_id)
+        if not note or note["user_id"] != user_id:
+            return None
+        for field in ("title", "content", "topic", "subject_id", "is_favorite"):
+            if field in data and data[field] is not None:
+                note[field] = data[field]
+        note["updated_at"] = _now()
+        return note
+
+    async def delete(self, user_id: str, note_id: str) -> bool:
+        note = _notes.get(note_id)
+        if not note or note["user_id"] != user_id:
+            return False
+        del _notes[note_id]
+        return True
+
+
 def build_memory_bundle() -> RepositoryBundle:
     return RepositoryBundle(
         subjects=MemorySubjectRepository(),
         documents=MemoryDocumentRepository(),
         chunks=MemoryChunkRepository(),
         quizzes=MemoryQuizRepository(),
+        activities=MemoryActivityRepository(),
+        notes=MemoryNoteRepository(),
     )

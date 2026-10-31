@@ -73,6 +73,39 @@ export const api = {
       body: JSON.stringify({ question, subject_id: subjectId }),
     }),
 
+  // Planificador (actividades)
+  listActivities: (params?: { subject_id?: string; status?: string }) => {
+    const qs = new URLSearchParams()
+    if (params?.subject_id) qs.set('subject_id', params.subject_id)
+    if (params?.status) qs.set('status', params.status)
+    const suffix = qs.toString() ? `?${qs}` : ''
+    return request<Activity[]>(`/activities${suffix}`)
+  },
+  createActivity: (body: {
+    subject_id: string
+    title: string
+    due_date?: string | null
+    status?: string
+  }) => request<Activity>('/activities', { method: 'POST', body: JSON.stringify(body) }),
+  updateActivity: (id: string, body: Partial<{ title: string; due_date: string | null; status: string }>) =>
+    request<Activity>(`/activities/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteActivity: (id: string) =>
+    request<void>(`/activities/${id}`, { method: 'DELETE' }),
+
+  // MIS NOTAS PLUS
+  listNotes: (params?: { subject_id?: string; q?: string }) => {
+    const qs = new URLSearchParams()
+    if (params?.subject_id) qs.set('subject_id', params.subject_id)
+    if (params?.q) qs.set('q', params.q)
+    const suffix = qs.toString() ? `?${qs}` : ''
+    return request<Note[]>(`/notes${suffix}`)
+  },
+  createNote: (body: { title: string; content?: string; subject_id?: string; topic?: string }) =>
+    request<Note>('/notes', { method: 'POST', body: JSON.stringify(body) }),
+  updateNote: (id: string, body: Partial<{ title: string; content: string; is_favorite: boolean; topic: string }>) =>
+    request<Note>(`/notes/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteNote: (id: string) => request<void>(`/notes/${id}`, { method: 'DELETE' }),
+
   // Cuestionarios
   createQuiz: (body: {
     subject_id: string
@@ -134,4 +167,23 @@ export interface AttemptResult {
   score: number
   correct: number
   total: number
+}
+
+export interface Activity {
+  id: string
+  subject_id: string
+  title: string
+  due_date?: string | null
+  status: 'pending' | 'in_progress' | 'done'
+}
+
+export interface Note {
+  id: string
+  subject_id?: string | null
+  title: string
+  content: string
+  topic?: string | null
+  is_favorite: boolean
+  created_at?: string
+  updated_at?: string
 }

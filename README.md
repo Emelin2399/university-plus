@@ -40,10 +40,10 @@ Arquitectura web cliente-servidor:
 | 2 | Biblioteca inteligente de documentos (archivos **y enlaces**) | ✅ |
 | 3 | Tutor virtual con IA (RAG) | ✅ |
 | 4 | Generador de evaluaciones y simulacros | ✅ |
-| 5 | Planificador académico | 🔜 v2 |
+| 5 | Planificador académico | ✅ |
 | 6 | Seguimiento del aprendizaje | 🔜 v2 |
 | 7 | EXPLORA PLUS (investigación académica) | 🔜 v2 |
-| 8 | MIS NOTAS PLUS (apuntes) | 🔜 v2 |
+| 8 | MIS NOTAS PLUS (apuntes) | ✅ |
 
 ## 📁 Estructura del repositorio
 

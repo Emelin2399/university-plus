@@ -21,8 +21,10 @@ if TYPE_CHECKING:
     from app.core.config import Settings
 
 from app.repositories.base import (
+    ActivityRepository,
     ChunkRepository,
     DocumentRepository,
+    NoteRepository,
     QuizRepository,
     RepositoryBundle,
     SubjectRepository,
@@ -319,6 +321,166 @@ class SupabaseQuizRepository(QuizRepository):
         return {**attempt, "user_id": user_id}
 
 
+class SupabaseActivityRepository(ActivityRepository):
+    def __init__(self, client, settings: Settings):
+        self.client = client
+        self.settings = settings
+
+    async def list(
+        self, user_id: str, subject_id: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
+        def _q():
+            query = self.client.table("activities").select("*").eq("user_id", user_id)
+            if subject_id:
+                query = query.eq("subject_id", subject_id)
+            if status:
+                query = query.eq("status", status)
+            return query.order("due_date", desc=False).execute()
+
+        res = await to_thread.run_sync(_q)
+        return res.data or []
+
+    async def create(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+        row = {
+            "user_id": user_id,
+            "subject_id": data["subject_id"],
+            "title": data["title"],
+            "due_date": data.get("due_date"),
+            "status": data.get("status", "pending"),
+        }
+
+        def _q():
+            return self.client.table("activities").insert(row).execute()
+
+        res = await to_thread.run_sync(_q)
+        return (res.data or [row])[0]
+
+    async def update(
+        self, user_id: str, activity_id: str, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        patch = {
+            k: v
+            for k, v in data.items()
+            if k in ("title", "due_date", "status", "subject_id") and v is not None
+        }
+        patch["updated_at"] = _now_iso()
+
+        def _q():
+            return (
+                self.client.table("activities")
+                .update(patch)
+                .eq("id", activity_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+
+        res = await to_thread.run_sync(_q)
+        return (res.data or [None])[0]
+
+    async def delete(self, user_id: str, activity_id: str) -> bool:
+        def _q():
+            return (
+                self.client.table("activities")
+                .delete()
+                .eq("id", activity_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+
+        res = await to_thread.run_sync(_q)
+        return bool(res.data)
+
+
+class SupabaseNoteRepository(NoteRepository):
+    def __init__(self, client, settings: Settings):
+        self.client = client
+        self.settings = settings
+
+    async def list(
+        self, user_id: str, subject_id: str | None = None, query: str | None = None
+    ) -> list[dict[str, Any]]:
+        def _q():
+            q = self.client.table("notes").select("*").eq("user_id", user_id)
+            if subject_id:
+                q = q.eq("subject_id", subject_id)
+            if query:
+                # Búsqueda en título o contenido (ilike)
+                q = q.or_(f"title.ilike.%{query}%,content.ilike.%{query}%")
+            return q.order("updated_at", desc=True).execute()
+
+        res = await to_thread.run_sync(_q)
+        return res.data or []
+
+    async def get(self, user_id: str, note_id: str) -> dict[str, Any] | None:
+        def _q():
+            return (
+                self.client.table("notes")
+                .select("*")
+                .eq("id", note_id)
+                .eq("user_id", user_id)
+                .single()
+                .execute()
+            )
+
+        try:
+            res = await to_thread.run_sync(_q)
+        except Exception:
+            return None
+        return res.data
+
+    async def create(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]:
+        row = {
+            "user_id": user_id,
+            "subject_id": data.get("subject_id"),
+            "title": data["title"],
+            "content": data.get("content", ""),
+            "topic": data.get("topic"),
+            "is_favorite": data.get("is_favorite", False),
+        }
+
+        def _q():
+            return self.client.table("notes").insert(row).execute()
+
+        res = await to_thread.run_sync(_q)
+        return (res.data or [row])[0]
+
+    async def update(
+        self, user_id: str, note_id: str, data: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        patch = {
+            k: v
+            for k, v in data.items()
+            if k in ("title", "content", "topic", "subject_id", "is_favorite")
+            and v is not None
+        }
+        patch["updated_at"] = _now_iso()
+
+        def _q():
+            return (
+                self.client.table("notes")
+                .update(patch)
+                .eq("id", note_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+
+        res = await to_thread.run_sync(_q)
+        return (res.data or [None])[0]
+
+    async def delete(self, user_id: str, note_id: str) -> bool:
+        def _q():
+            return (
+                self.client.table("notes")
+                .delete()
+                .eq("id", note_id)
+                .eq("user_id", user_id)
+                .execute()
+            )
+
+        res = await to_thread.run_sync(_q)
+        return bool(res.data)
+
+
 def build_supabase_bundle(settings: Settings) -> RepositoryBundle:
     from app.services.supabase_client import get_supabase
 
@@ -328,4 +490,6 @@ def build_supabase_bundle(settings: Settings) -> RepositoryBundle:
         documents=SupabaseDocumentRepository(client, settings),
         chunks=SupabaseChunkRepository(client, settings),
         quizzes=SupabaseQuizRepository(client, settings),
+        activities=SupabaseActivityRepository(client, settings),
+        notes=SupabaseNoteRepository(client, settings),
     )

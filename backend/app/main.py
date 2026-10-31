@@ -5,7 +5,15 @@ Punto de entrada de la aplicación. Registra los routers de cada módulo del MVP
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import documents, health, quizzes, subjects, tutor
+from app.api import (
+    activities,
+    documents,
+    health,
+    notes,
+    quizzes,
+    subjects,
+    tutor,
+)
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -30,6 +38,8 @@ app.include_router(subjects.router)
 app.include_router(documents.router)
 app.include_router(tutor.router)
 app.include_router(quizzes.router)
+app.include_router(activities.router)
+app.include_router(notes.router)
 
 
 @app.get("/", tags=["root"])

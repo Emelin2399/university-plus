@@ -72,6 +72,24 @@ class ChunkRepository(ABC):
         ...
 
 
+class ActivityRepository(ABC):
+    @abstractmethod
+    async def list(
+        self, user_id: str, subject_id: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]: ...
+
+    @abstractmethod
+    async def create(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]: ...
+
+    @abstractmethod
+    async def update(
+        self, user_id: str, activity_id: str, data: dict[str, Any]
+    ) -> dict[str, Any] | None: ...
+
+    @abstractmethod
+    async def delete(self, user_id: str, activity_id: str) -> bool: ...
+
+
 class QuizRepository(ABC):
     @abstractmethod
     async def create(self, user_id: str, quiz: dict[str, Any]) -> dict[str, Any]: ...
@@ -85,6 +103,29 @@ class QuizRepository(ABC):
     ) -> dict[str, Any]: ...
 
 
+class NoteRepository(ABC):
+    """MIS NOTAS PLUS — apuntes personales del estudiante."""
+
+    @abstractmethod
+    async def list(
+        self, user_id: str, subject_id: str | None = None, query: str | None = None
+    ) -> list[dict[str, Any]]: ...
+
+    @abstractmethod
+    async def get(self, user_id: str, note_id: str) -> dict[str, Any] | None: ...
+
+    @abstractmethod
+    async def create(self, user_id: str, data: dict[str, Any]) -> dict[str, Any]: ...
+
+    @abstractmethod
+    async def update(
+        self, user_id: str, note_id: str, data: dict[str, Any]
+    ) -> dict[str, Any] | None: ...
+
+    @abstractmethod
+    async def delete(self, user_id: str, note_id: str) -> bool: ...
+
+
 class RepositoryBundle:
     """Agrupa todos los repositorios de una implementación concreta."""
 
@@ -94,8 +135,12 @@ class RepositoryBundle:
         documents: DocumentRepository,
         chunks: ChunkRepository,
         quizzes: QuizRepository,
+        activities: "ActivityRepository",
+        notes: "NoteRepository",
     ):
         self.subjects = subjects
         self.documents = documents
         self.chunks = chunks
         self.quizzes = quizzes
+        self.activities = activities
+        self.notes = notes

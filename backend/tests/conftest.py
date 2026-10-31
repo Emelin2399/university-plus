@@ -69,4 +69,6 @@ def repos():
     memory._chunks.clear()
     memory._quizzes.clear()
     memory._attempts.clear()
+    memory._activities.clear()
+    memory._notes.clear()
     return build_memory_bundle()

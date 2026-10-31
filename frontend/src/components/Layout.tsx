@@ -7,6 +7,8 @@ const navItems = [
   { to: '/documents', label: 'Biblioteca' },
   { to: '/tutor', label: 'Tutor IA' },
   { to: '/quizzes', label: 'Cuestionarios' },
+  { to: '/planner', label: 'Planificador' },
+  { to: '/notes', label: 'Mis Notas' },
 ]
 
 export default function Layout() {
