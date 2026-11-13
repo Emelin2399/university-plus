@@ -18,16 +18,26 @@ export default function NotesPage() {
   const [uploading, setUploading] = useState(false)
   const [attachError, setAttachError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Referencia al área editable (editor de texto enriquecido).
+  const editorRef = useRef<HTMLDivElement>(null)
 
   const load = (q?: string) => api.listNotes(q ? { q } : undefined).then(setNotes).catch(() => {})
   useEffect(() => {
     load()
   }, [])
 
+  // Carga el HTML guardado dentro del área editable cuando cambia la nota.
+  // Lo hacemos de forma imperativa para que el cursor del usuario no se
+  // reinicie en cada pulsación de tecla (el div no es controlado por React).
+  const syncEditor = (html: string) => {
+    setContent(html)
+    if (editorRef.current) editorRef.current.innerHTML = html
+  }
+
   const openNew = () => {
     setSelected(null)
     setTitle('')
-    setContent('')
+    syncEditor('')
     setAttachments([])
     setAttachError('')
   }
@@ -35,17 +45,19 @@ export default function NotesPage() {
   const openNote = (n: Note) => {
     setSelected(n)
     setTitle(n.title)
-    setContent(n.content)
+    syncEditor(n.content ?? '')
     setAttachments(n.attachments ?? [])
     setAttachError('')
   }
 
   const save = async () => {
     if (!title.trim()) return
+    // El contenido se guarda como HTML (texto enriquecido) en el campo content.
+    const html = editorRef.current?.innerHTML ?? content
     if (selected) {
-      await api.updateNote(selected.id, { title, content })
+      await api.updateNote(selected.id, { title, content: html })
     } else {
-      const created = await api.createNote({ title, content })
+      const created = await api.createNote({ title, content: html })
       // Al crear, dejamos la nota abierta para poder adjuntar archivos.
       setSelected(created)
       setAttachments(created.attachments ?? [])
@@ -62,6 +74,22 @@ export default function NotesPage() {
   const toggleFav = async (n: Note) => {
     await api.updateNote(n.id, { is_favorite: !n.is_favorite })
     load(query || undefined)
+  }
+
+  // --- Editor de texto enriquecido (contentEditable + document.execCommand) ---
+  // Nota: document.execCommand está marcado como obsoleto, pero sigue
+  // funcionando en todos los navegadores actuales y NO requiere instalar
+  // ninguna dependencia nueva. Así la actualización de la app es más sencilla.
+  const exec = (command: string, value?: string) => {
+    // Mantiene el foco en el editor para que el formato se aplique a la selección.
+    editorRef.current?.focus()
+    document.execCommand(command, false, value)
+    // Guardamos el HTML actualizado en el estado.
+    if (editorRef.current) setContent(editorRef.current.innerHTML)
+  }
+
+  const onEditorInput = () => {
+    if (editorRef.current) setContent(editorRef.current.innerHTML)
   }
 
   const onPickFiles = async (fileList: FileList | null) => {
@@ -87,6 +115,15 @@ export default function NotesPage() {
 
   return (
     <div>
+      {/* Estilos para que las listas y el contenido enriquecido se vean bien
+          dentro del editor (Tailwind Preflight quita los marcadores por defecto). */}
+      <style>{`
+        .nota-editor ul { list-style: disc; padding-left: 1.5rem; margin: 0.25rem 0; }
+        .nota-editor ol { list-style: decimal; padding-left: 1.5rem; margin: 0.25rem 0; }
+        .nota-editor:empty:before { content: attr(data-placeholder); color: #94a3b8; }
+        .nota-editor:focus { outline: none; }
+      `}</style>
+
       <h2 className="text-2xl font-bold mb-1">Mis Notas Plus</h2>
       <p className="text-slate-500 mb-6">Tu cuaderno digital de apuntes.</p>
 
@@ -153,12 +190,135 @@ export default function NotesPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
-          <textarea
-            className="w-full h-72 border rounded-md p-3 text-sm outline-none resize-none"
-            placeholder="Escribe tus apuntes aquí…"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
+
+          {/* Barra de herramientas de formato */}
+          <div className="flex flex-wrap items-center gap-1.5 border rounded-md px-2 py-2 mb-2 bg-slate-50">
+            <button
+              type="button"
+              onClick={() => exec('bold')}
+              title="Negrita"
+              aria-label="Negrita"
+              className="w-8 h-8 rounded-md hover:bg-slate-200 font-bold text-sm"
+            >
+              N
+            </button>
+            <button
+              type="button"
+              onClick={() => exec('italic')}
+              title="Cursiva"
+              aria-label="Cursiva"
+              className="w-8 h-8 rounded-md hover:bg-slate-200 italic text-sm"
+            >
+              K
+            </button>
+            <button
+              type="button"
+              onClick={() => exec('underline')}
+              title="Subrayado"
+              aria-label="Subrayado"
+              className="w-8 h-8 rounded-md hover:bg-slate-200 underline text-sm"
+            >
+              S
+            </button>
+
+            <span className="w-px h-6 bg-slate-300 mx-1" />
+
+            {/* Tamaño de texto / encabezado */}
+            <label className="flex items-center gap-1 text-sm text-slate-600">
+              Tamaño
+              <select
+                onChange={(e) => {
+                  if (e.target.value) exec('formatBlock', e.target.value)
+                  e.target.selectedIndex = 0
+                }}
+                title="Tamaño del texto"
+                aria-label="Tamaño del texto"
+                className="border rounded-md px-1.5 py-1 text-sm bg-white"
+                defaultValue=""
+              >
+                <option value="">Normal</option>
+                <option value="H1">Título grande</option>
+                <option value="H2">Título mediano</option>
+                <option value="H3">Título pequeño</option>
+                <option value="P">Párrafo</option>
+              </select>
+            </label>
+
+            <span className="w-px h-6 bg-slate-300 mx-1" />
+
+            {/* Color de fuente */}
+            <label className="flex items-center gap-1 text-sm text-slate-600" title="Color del texto">
+              Color
+              <input
+                type="color"
+                defaultValue="#0f172a"
+                aria-label="Color del texto"
+                onChange={(e) => exec('foreColor', e.target.value)}
+                className="w-8 h-8 p-0 border rounded-md cursor-pointer bg-white"
+              />
+            </label>
+
+            {/* Resaltado */}
+            <label className="flex items-center gap-1 text-sm text-slate-600" title="Color de resaltado">
+              Resaltar
+              <input
+                type="color"
+                defaultValue="#fde047"
+                aria-label="Color de resaltado"
+                onChange={(e) => exec('hiliteColor', e.target.value)}
+                className="w-8 h-8 p-0 border rounded-md cursor-pointer bg-white"
+              />
+            </label>
+
+            <span className="w-px h-6 bg-slate-300 mx-1" />
+
+            {/* Listas */}
+            <button
+              type="button"
+              onClick={() => exec('insertUnorderedList')}
+              title="Lista con viñetas"
+              aria-label="Lista con viñetas"
+              className="w-8 h-8 rounded-md hover:bg-slate-200 text-sm"
+            >
+              • —
+            </button>
+            <button
+              type="button"
+              onClick={() => exec('insertOrderedList')}
+              title="Lista numerada"
+              aria-label="Lista numerada"
+              className="w-8 h-8 rounded-md hover:bg-slate-200 text-sm"
+            >
+              1.
+            </button>
+
+            <span className="w-px h-6 bg-slate-300 mx-1" />
+
+            {/* Quitar formato */}
+            <button
+              type="button"
+              onClick={() => exec('removeFormat')}
+              title="Quitar formato"
+              aria-label="Quitar formato"
+              className="px-2 h-8 rounded-md hover:bg-slate-200 text-sm text-slate-600"
+            >
+              Limpiar
+            </button>
+          </div>
+
+          {/* Área editable: el contenido se guarda como HTML en `content`. */}
+          <div
+            ref={editorRef}
+            className="nota-editor w-full h-72 border rounded-md p-3 text-sm overflow-auto"
+            contentEditable
+            suppressContentEditableWarning
+            role="textbox"
+            aria-multiline="true"
+            aria-label="Contenido de la nota"
+            data-placeholder="Escribe tus apuntes aquí…"
+            onInput={onEditorInput}
           />
+
           <div className="flex justify-between items-center mt-3">
             <button
               onClick={save}
