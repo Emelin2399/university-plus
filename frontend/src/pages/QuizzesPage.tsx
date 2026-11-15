@@ -78,43 +78,146 @@ export default function QuizzesPage() {
 
       {quiz && (
         <div className="bg-white rounded-xl shadow-sm p-5 space-y-5">
-          {quiz.questions.map((q, i) => (
-            <div key={q.id}>
-              <p className="font-medium text-sm mb-2">
-                {i + 1}. {q.statement}
-              </p>
-              <div className="space-y-1">
-                {(q.options ?? ['Verdadero', 'Falso']).map((opt) => (
-                  <label key={opt} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="radio"
-                      name={q.id}
-                      checked={answers[q.id] === opt}
-                      onChange={() => setAnswers((a) => ({ ...a, [q.id]: opt }))}
-                    />
-                    {opt}
-                  </label>
-                ))}
+          {quiz.questions.map((q, i) => {
+            const detail = result?.details.find((d) => d.question_id === q.id)
+            return (
+              <div key={q.id}>
+                <p className="font-medium text-sm mb-2 flex items-center gap-2">
+                  <span>
+                    {i + 1}. {q.statement}
+                  </span>
+                  {q.difficulty && (
+                    <span className={difficultyBadge(q.difficulty)}>
+                      {difficultyLabel(q.difficulty)}
+                    </span>
+                  )}
+                </p>
+                <div className="space-y-1">
+                  {(q.options ?? ['Verdadero', 'Falso']).map((opt) => {
+                    const isCorrectOpt =
+                      detail != null && detail.correct_answer === opt
+                    const isChosenWrong =
+                      detail != null &&
+                      detail.given_answer === opt &&
+                      !detail.is_correct
+                    return (
+                      <label
+                        key={opt}
+                        className={`flex items-center gap-2 text-sm rounded px-1 ${
+                          isCorrectOpt
+                            ? 'bg-green-50 text-green-700 font-medium'
+                            : isChosenWrong
+                            ? 'bg-red-50 text-red-600'
+                            : ''
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={q.id}
+                          disabled={result != null}
+                          checked={answers[q.id] === opt}
+                          onChange={() =>
+                            setAnswers((a) => ({ ...a, [q.id]: opt }))
+                          }
+                        />
+                        {opt}
+                        {isCorrectOpt && ' ✓'}
+                      </label>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
-          <button
-            onClick={submit}
-            className="bg-brand text-white px-5 py-2 rounded-md text-sm"
-          >
-            Enviar respuestas
-          </button>
+          {!result && (
+            <button
+              onClick={submit}
+              className="bg-brand text-white px-5 py-2 rounded-md text-sm"
+            >
+              Enviar respuestas
+            </button>
+          )}
 
           {result && (
-            <div className="mt-4 p-4 bg-slate-50 rounded-lg text-sm">
-              <p className="font-semibold">
-                Resultado: {result.score}% ({result.correct}/{result.total} correctas)
-              </p>
+            <div className="mt-4 space-y-3">
+              <div className="p-4 bg-slate-50 rounded-lg text-sm">
+                <p className="font-semibold">
+                  Resultado: {result.score}% ({result.correct}/{result.total}{' '}
+                  correctas)
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-slate-700">
+                  En qué fallaste
+                </p>
+                {result.details.map((d, i) => (
+                  <div
+                    key={d.question_id}
+                    className={`rounded-lg border p-3 text-sm ${
+                      d.is_correct
+                        ? 'border-green-200 bg-green-50'
+                        : 'border-red-200 bg-red-50'
+                    }`}
+                  >
+                    <p className="font-medium flex items-center gap-2">
+                      <span>{d.is_correct ? '✓' : '✗'}</span>
+                      <span>
+                        {i + 1}. {d.statement}
+                      </span>
+                    </p>
+                    <p className="mt-1 text-slate-600">
+                      Tu respuesta:{' '}
+                      <span
+                        className={
+                          d.is_correct ? 'text-green-700' : 'text-red-600'
+                        }
+                      >
+                        {d.given_answer || '(sin responder)'}
+                      </span>
+                    </p>
+                    {!d.is_correct && (
+                      <p className="text-slate-600">
+                        Respuesta correcta:{' '}
+                        <span className="font-semibold text-green-700">
+                          {d.correct_answer ?? '—'}
+                        </span>
+                      </p>
+                    )}
+                    {d.explanation && (
+                      <p className="mt-1 text-slate-500">{d.explanation}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={generate}
+                className="bg-brand-light text-white px-5 py-2 rounded-md text-sm"
+              >
+                Generar otro cuestionario
+              </button>
             </div>
           )}
         </div>
       )}
     </div>
   )
+}
+
+/** Devuelve las clases Tailwind de la insignia de dificultad. */
+function difficultyBadge(difficulty: string): string {
+  const base = 'text-xs px-2 py-0.5 rounded-full font-normal'
+  if (difficulty === 'facil') return `${base} bg-green-100 text-green-700`
+  if (difficulty === 'avanzado') return `${base} bg-red-100 text-red-600`
+  return `${base} bg-amber-100 text-amber-700`
+}
+
+/** Texto legible para la etiqueta de dificultad. */
+function difficultyLabel(difficulty: string): string {
+  if (difficulty === 'facil') return 'Fácil'
+  if (difficulty === 'medio') return 'Medio'
+  if (difficulty === 'avanzado') return 'Avanzado'
+  return difficulty
 }

@@ -11,10 +11,17 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.config import Settings, get_settings
 from app.core.security import CurrentUser, get_current_user
-from app.models.schemas import AttemptResult, AttemptSubmit, Quiz, QuizCreate
+from app.models.schemas import (
+    AttemptAnswerDetail,
+    AttemptResult,
+    AttemptSubmit,
+    Quiz,
+    QuizCreate,
+)
 from app.repositories.base import RepositoryBundle
 from app.repositories.factory import get_repositories
 from app.services.ai_service import get_ai_service
+from app.services.quiz_scoring import score_attempt
 
 router = APIRouter(prefix="/quizzes", tags=["quizzes"])
 
@@ -76,16 +83,9 @@ async def submit_attempt(
     if not quiz:
         raise HTTPException(status_code=404, detail="Cuestionario no encontrado.")
 
-    by_id = {q["id"]: q for q in quiz.get("questions", [])}
-    correct = 0
-    for ans in payload.answers:
-        q = by_id.get(ans.question_id)
-        if q and q.get("correct_answer") is not None:
-            if (
-                ans.given_answer.strip().lower()
-                == str(q["correct_answer"]).strip().lower()
-            ):
-                correct += 1
+    given_by_id = {a.question_id: a.given_answer for a in payload.answers}
+    detail_dicts, correct = score_attempt(quiz, given_by_id)
+    details = [AttemptAnswerDetail(**d) for d in detail_dicts]
 
     total_questions = len(quiz.get("questions", []))
     total = total_questions or 1
@@ -110,4 +110,5 @@ async def submit_attempt(
         score=score,
         correct=correct,
         total=total_questions,
+        details=details,
     )

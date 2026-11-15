@@ -195,6 +195,8 @@ export interface Question {
   type: string
   options?: string[]
   explanation?: string
+  // Etiqueta opcional de dificultad; las preguntas llegan de fácil a avanzada.
+  difficulty?: 'facil' | 'medio' | 'avanzado' | string
 }
 
 export interface Quiz {
@@ -204,11 +206,22 @@ export interface Quiz {
   questions: Question[]
 }
 
+export interface AttemptAnswerDetail {
+  question_id: string
+  statement: string
+  given_answer: string
+  correct_answer?: string | null
+  is_correct: boolean
+  explanation?: string | null
+  options?: string[] | null
+}
+
 export interface AttemptResult {
   attempt_id: string
   score: number
   correct: number
   total: number
+  details: AttemptAnswerDetail[]
 }
 
 export interface Activity {

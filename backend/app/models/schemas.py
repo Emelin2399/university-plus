@@ -75,6 +75,9 @@ class Question(BaseModel):
     options: list[str] | None = None
     correct_answer: str | None = None
     explanation: str | None = None
+    # Etiqueta opcional de dificultad: "facil" | "medio" | "avanzado".
+    # Las preguntas llegan ordenadas de fácil a avanzada (ver position).
+    difficulty: str | None = None
     position: int = 0
 
 
@@ -96,11 +99,30 @@ class AttemptSubmit(BaseModel):
     answers: list[AttemptAnswerIn]
 
 
+class AttemptAnswerDetail(BaseModel):
+    """Retroalimentación por pregunta tras enviar un intento.
+
+    Permite mostrar al estudiante en qué falló: su respuesta, la correcta y
+    la explicación de cada pregunta.
+    """
+
+    question_id: str
+    statement: str
+    given_answer: str
+    correct_answer: str | None = None
+    is_correct: bool
+    explanation: str | None = None
+    options: list[str] | None = None
+
+
 class AttemptResult(BaseModel):
     attempt_id: str
     score: float
     correct: int
     total: int
+    # Detalle por pregunta para retroalimentación (compatible hacia atrás:
+    # los campos score/correct/total se mantienen).
+    details: list[AttemptAnswerDetail] = []
 
 
 # --------------------------- Activities (Planificador) ---------

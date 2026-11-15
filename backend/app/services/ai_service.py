@@ -138,17 +138,22 @@ class AIService:
 
         questions: list[dict[str, Any]] = []
         for i in range(num_questions):
+            # Gradiente de dificultad: fácil al principio, avanzado al final.
+            label = _difficulty_label(i, num_questions)
             questions.append(
                 {
-                    "statement": f"(Mock) Pregunta {i + 1} sobre el material (dificultad: {difficulty})",
+                    "statement": (
+                        f"(Mock) Pregunta {i + 1} sobre el material "
+                        f"(dificultad: {label})"
+                    ),
                     "type": "multiple_choice",
                     "options": ["Opción A", "Opción B", "Opción C", "Opción D"],
                     "correct_answer": "Opción A",
                     "explanation": "Explicación de ejemplo generada en modo mock.",
-                    "position": i,
+                    "difficulty": label,
                 }
             )
-        return questions
+        return _sanitize_quiz_items(questions)
 
     async def _openai_quiz(
         self, text: str, num_questions: int, difficulty: str
@@ -158,13 +163,27 @@ class AIService:
         import httpx
 
         system = (
-            "Genera cuestionarios de estudio en JSON. Devuelve un array de objetos "
-            "con las claves: statement, type (multiple_choice|true_false|open), "
-            "options (array o null), correct_answer, explanation."
+            "Eres un generador de cuestionarios de estudio para UNIVERSITY PLUS. "
+            "Devuelve SIEMPRE un objeto JSON con la clave \"questions\", que es un "
+            "array de objetos. Cada objeto tiene las claves: statement, type "
+            "(multiple_choice|true_false|open), options (array de strings o null), "
+            "correct_answer, explanation, difficulty (facil|medio|avanzado).\n\n"
+            "REGLAS OBLIGATORIAS:\n"
+            "1. En las preguntas multiple_choice incluye EXACTAMENTE 4 opciones "
+            "DISTINTAS entre sí: una correcta y tres incorrectas pero plausibles. "
+            "Nunca repitas una opción ni pongas la misma respuesta cuatro veces. "
+            "correct_answer debe ser idéntica (mismo texto) a una de las options.\n"
+            "2. Ordena las preguntas de la MÁS FÁCIL a la MÁS AVANZADA, formando un "
+            "gradiente de dificultad. La primera debe ser la más sencilla y la "
+            "última la más difícil. Etiqueta cada pregunta con su difficulty.\n"
+            "3. En true_false usa options [\"Verdadero\", \"Falso\"] y correct_answer "
+            "igual a una de ellas. En open deja options en null.\n"
+            "4. Redacta todo en español, con explicaciones claras y breves."
         )
         prompt = (
-            f"Crea {num_questions} preguntas de dificultad {difficulty} basadas en "
-            f"este material:\n\n{text[:4000]}"
+            f"Crea {num_questions} preguntas (dificultad general: {difficulty}) "
+            f"basadas en este material. Devuélvelas YA ORDENADAS de más fácil a más "
+            f"avanzada y con opciones distintas:\n\n{text[:4000]}"
         )
         async with httpx.AsyncClient(timeout=90) as client:
             resp = await client.post(
@@ -184,9 +203,64 @@ class AIService:
             content = resp.json()["choices"][0]["message"]["content"]
             data = json.loads(content)
             items = data if isinstance(data, list) else data.get("questions", [])
-            for i, q in enumerate(items):
-                q["position"] = i
-            return items
+            return _sanitize_quiz_items(items)
+
+
+def _difficulty_label(index: int, total: int) -> str:
+    """Asigna una etiqueta de dificultad según la posición en el gradiente.
+
+    Reparte las preguntas en tres tramos: fácil, medio y avanzado, de modo que
+    el orden refleje una progresión de fácil a avanzado.
+    """
+    if total <= 1:
+        return "facil"
+    ratio = index / (total - 1)
+    if ratio < 1 / 3:
+        return "facil"
+    if ratio < 2 / 3:
+        return "medio"
+    return "avanzado"
+
+
+def _sanitize_quiz_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Valida y normaliza las preguntas generadas antes de persistirlas.
+
+    Salvaguardas (robustez ante respuestas imperfectas del modelo):
+    - En multiple_choice elimina opciones duplicadas conservando el orden.
+    - Garantiza que correct_answer esté presente entre las opciones.
+    - Si tras deduplicar quedan menos de 2 opciones, conserva la pregunta sin
+      romper el flujo (no se descarta ni se lanza excepción).
+    - Fija el campo position (0-based) para que el orden fácil→avanzado sea
+      estable.
+    """
+    clean: list[dict[str, Any]] = []
+    for q in items:
+        if not isinstance(q, dict):
+            continue
+        qtype = q.get("type")
+        options = q.get("options")
+        if qtype == "multiple_choice" and isinstance(options, list):
+            # Deduplicar preservando el orden de aparición.
+            seen: set[str] = set()
+            deduped: list[str] = []
+            for opt in options:
+                key = str(opt).strip().lower()
+                if key and key not in seen:
+                    seen.add(key)
+                    deduped.append(str(opt))
+            # Asegurar que la respuesta correcta esté entre las opciones.
+            correct = q.get("correct_answer")
+            if correct is not None:
+                correct_key = str(correct).strip().lower()
+                if correct_key and correct_key not in seen:
+                    deduped.append(str(correct))
+                    seen.add(correct_key)
+            q["options"] = deduped
+        clean.append(q)
+
+    for i, q in enumerate(clean):
+        q["position"] = i
+    return clean
 
 
 def get_ai_service(settings: Settings) -> AIService:
