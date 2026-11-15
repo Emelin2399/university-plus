@@ -84,12 +84,15 @@ async def submit_attempt(
         raise HTTPException(status_code=404, detail="Cuestionario no encontrado.")
 
     given_by_id = {a.question_id: a.given_answer for a in payload.answers}
-    detail_dicts, correct = score_attempt(quiz, given_by_id)
+    detail_dicts, correct, gradable = score_attempt(quiz, given_by_id)
     details = [AttemptAnswerDetail(**d) for d in detail_dicts]
 
-    total_questions = len(quiz.get("questions", []))
-    total = total_questions or 1
-    score = round(correct / total * 100, 2)
+    # La nota se calcula SOLO sobre preguntas auto-calificables
+    # (multiple_choice/true_false); las abiertas se excluyen del denominador.
+    # ``total`` refleja las preguntas puntuables para que ``correct/total`` y la
+    # nota sean coherentes en la interfaz y en el seguimiento.
+    denominator = gradable or 1
+    score = round(correct / denominator * 100, 2)
 
     attempt_id = str(uuid.uuid4())
     await repos.quizzes.create_attempt(
@@ -101,7 +104,7 @@ async def submit_attempt(
             "quiz_title": quiz.get("title"),
             "score": score,
             "correct": correct,
-            "total": total_questions,
+            "total": gradable,
         },
     )
 
@@ -109,6 +112,6 @@ async def submit_attempt(
         attempt_id=attempt_id,
         score=score,
         correct=correct,
-        total=total_questions,
+        total=gradable,
         details=details,
     )

@@ -211,7 +211,10 @@ export interface AttemptAnswerDetail {
   statement: string
   given_answer: string
   correct_answer?: string | null
-  is_correct: boolean
+  // `null` en preguntas abiertas: no se auto-califican (ver auto_graded).
+  is_correct: boolean | null
+  // `false` en preguntas abiertas (excluidas de la nota).
+  auto_graded: boolean
   explanation?: string | null
   options?: string[] | null
 }

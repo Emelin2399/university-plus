@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import { api, type AttemptResult, type Quiz, type Subject } from '../lib/api'
+import {
+  api,
+  type AttemptResult,
+  type Question,
+  type Quiz,
+  type Subject,
+} from '../lib/api'
 
 export default function QuizzesPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -92,40 +98,52 @@ export default function QuizzesPage() {
                     </span>
                   )}
                 </p>
-                <div className="space-y-1">
-                  {(q.options ?? ['Verdadero', 'Falso']).map((opt) => {
-                    const isCorrectOpt =
-                      detail != null && detail.correct_answer === opt
-                    const isChosenWrong =
-                      detail != null &&
-                      detail.given_answer === opt &&
-                      !detail.is_correct
-                    return (
-                      <label
-                        key={opt}
-                        className={`flex items-center gap-2 text-sm rounded px-1 ${
-                          isCorrectOpt
-                            ? 'bg-green-50 text-green-700 font-medium'
-                            : isChosenWrong
-                            ? 'bg-red-50 text-red-600'
-                            : ''
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name={q.id}
-                          disabled={result != null}
-                          checked={answers[q.id] === opt}
-                          onChange={() =>
-                            setAnswers((a) => ({ ...a, [q.id]: opt }))
-                          }
-                        />
-                        {opt}
-                        {isCorrectOpt && ' ✓'}
-                      </label>
-                    )
-                  })}
-                </div>
+                {effectiveType(q) === 'open' ? (
+                  <textarea
+                    className="w-full border rounded-md px-3 py-2 text-sm min-h-[90px] disabled:bg-slate-50 disabled:text-slate-500"
+                    placeholder="Escribe tu respuesta…"
+                    disabled={result != null}
+                    value={answers[q.id] ?? ''}
+                    onChange={(e) =>
+                      setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
+                    }
+                  />
+                ) : (
+                  <div className="space-y-1">
+                    {questionOptions(q).map((opt) => {
+                      const isCorrectOpt =
+                        detail != null && detail.correct_answer === opt
+                      const isChosenWrong =
+                        detail != null &&
+                        detail.given_answer === opt &&
+                        detail.is_correct === false
+                      return (
+                        <label
+                          key={opt}
+                          className={`flex items-center gap-2 text-sm rounded px-1 ${
+                            isCorrectOpt
+                              ? 'bg-green-50 text-green-700 font-medium'
+                              : isChosenWrong
+                              ? 'bg-red-50 text-red-600'
+                              : ''
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={q.id}
+                            disabled={result != null}
+                            checked={answers[q.id] === opt}
+                            onChange={() =>
+                              setAnswers((a) => ({ ...a, [q.id]: opt }))
+                            }
+                          />
+                          {opt}
+                          {isCorrectOpt && ' ✓'}
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}
@@ -152,44 +170,66 @@ export default function QuizzesPage() {
                 <p className="text-sm font-semibold text-slate-700">
                   En qué fallaste
                 </p>
-                {result.details.map((d, i) => (
-                  <div
-                    key={d.question_id}
-                    className={`rounded-lg border p-3 text-sm ${
-                      d.is_correct
-                        ? 'border-green-200 bg-green-50'
-                        : 'border-red-200 bg-red-50'
-                    }`}
-                  >
-                    <p className="font-medium flex items-center gap-2">
-                      <span>{d.is_correct ? '✓' : '✗'}</span>
-                      <span>
-                        {i + 1}. {d.statement}
-                      </span>
-                    </p>
-                    <p className="mt-1 text-slate-600">
-                      Tu respuesta:{' '}
-                      <span
-                        className={
-                          d.is_correct ? 'text-green-700' : 'text-red-600'
-                        }
-                      >
-                        {d.given_answer || '(sin responder)'}
-                      </span>
-                    </p>
-                    {!d.is_correct && (
-                      <p className="text-slate-600">
-                        Respuesta correcta:{' '}
-                        <span className="font-semibold text-green-700">
-                          {d.correct_answer ?? '—'}
+                {result.details.map((d, i) => {
+                  // Preguntas abiertas: no se auto-califican, se muestran en
+                  // tono neutro con la respuesta esperada para autoevaluación.
+                  const isOpen = d.auto_graded === false
+                  return (
+                    <div
+                      key={d.question_id}
+                      className={`rounded-lg border p-3 text-sm ${
+                        isOpen
+                          ? 'border-slate-200 bg-slate-50'
+                          : d.is_correct
+                          ? 'border-green-200 bg-green-50'
+                          : 'border-red-200 bg-red-50'
+                      }`}
+                    >
+                      <p className="font-medium flex items-center gap-2">
+                        <span>{isOpen ? '✎' : d.is_correct ? '✓' : '✗'}</span>
+                        <span>
+                          {i + 1}. {d.statement}
+                        </span>
+                        {isOpen && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-normal bg-slate-200 text-slate-600">
+                            Respuesta abierta
+                          </span>
+                        )}
+                      </p>
+                      <p className="mt-1 text-slate-600">
+                        Tu respuesta:{' '}
+                        <span
+                          className={
+                            isOpen
+                              ? 'text-slate-700'
+                              : d.is_correct
+                              ? 'text-green-700'
+                              : 'text-red-600'
+                          }
+                        >
+                          {d.given_answer || '(sin responder)'}
                         </span>
                       </p>
-                    )}
-                    {d.explanation && (
-                      <p className="mt-1 text-slate-500">{d.explanation}</p>
-                    )}
-                  </div>
-                ))}
+                      {(isOpen || !d.is_correct) && (
+                        <p className="text-slate-600">
+                          {isOpen ? 'Respuesta de referencia: ' : 'Respuesta correcta: '}
+                          <span className="font-semibold text-green-700">
+                            {d.correct_answer ?? '—'}
+                          </span>
+                        </p>
+                      )}
+                      {isOpen && (
+                        <p className="mt-1 text-slate-500">
+                          Esta pregunta es abierta: no puntúa en la nota. Compara
+                          tu respuesta con la de referencia para autoevaluarte.
+                        </p>
+                      )}
+                      {d.explanation && (
+                        <p className="mt-1 text-slate-500">{d.explanation}</p>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
 
               <button
@@ -204,6 +244,26 @@ export default function QuizzesPage() {
       )}
     </div>
   )
+}
+
+/**
+ * Determina el tipo efectivo de una pregunta para decidir cómo renderizarla.
+ *
+ * Usa `q.type` cuando está presente. Si falta, aplica un respaldo defensivo:
+ * si hay opciones, se trata como opción múltiple; si no hay opciones y no es
+ * abierta, se trata como verdadero/falso.
+ */
+function effectiveType(q: Question): 'multiple_choice' | 'true_false' | 'open' {
+  if (q.type === 'open') return 'open'
+  if (q.type === 'multiple_choice' || q.type === 'true_false') return q.type
+  if (q.options && q.options.length > 0) return 'multiple_choice'
+  return 'true_false'
+}
+
+/** Opciones a mostrar como radios según el tipo (nunca para abiertas). */
+function questionOptions(q: Question): string[] {
+  if (effectiveType(q) === 'true_false') return ['Verdadero', 'Falso']
+  return q.options ?? []
 }
 
 /** Devuelve las clases Tailwind de la insignia de dificultad. */

@@ -110,7 +110,12 @@ class AttemptAnswerDetail(BaseModel):
     statement: str
     given_answer: str
     correct_answer: str | None = None
-    is_correct: bool
+    # ``None`` en preguntas abiertas: no se pueden auto-calificar de forma
+    # fiable, así que la interfaz las muestra como "Respuesta abierta".
+    is_correct: bool | None = None
+    # ``False`` en preguntas abiertas (excluidas de la nota). Se mantiene por
+    # defecto ``True`` para compatibilidad con los tipos auto-calificables.
+    auto_graded: bool = True
     explanation: str | None = None
     options: list[str] | None = None
 
