@@ -176,9 +176,14 @@ class AIService:
             "2. Ordena las preguntas de la MÁS FÁCIL a la MÁS AVANZADA, formando un "
             "gradiente de dificultad. La primera debe ser la más sencilla y la "
             "última la más difícil. Etiqueta cada pregunta con su difficulty.\n"
-            "3. En true_false usa options [\"Verdadero\", \"Falso\"] y correct_answer "
-            "igual a una de ellas. En open deja options en null.\n"
-            "4. Redacta todo en español, con explicaciones claras y breves."
+            "3. Para preguntas verdadero/falso las opciones son EXACTAMENTE "
+            "Verdadero/Falso y la respuesta correcta DEBE ser Verdadero o Falso; "
+            "nunca mezcles tipos (si la respuesta no es Verdadero/Falso, usa "
+            "multiple_choice con 4 opciones distintas). En open deja options en "
+            "null.\n"
+            "4. La respuesta correcta SIEMPRE debe estar entre las opciones y, en "
+            "opción múltiple, debe haber 4 opciones distintas.\n"
+            "5. Redacta todo en español, con explicaciones claras y breves."
         )
         prompt = (
             f"Crea {num_questions} preguntas (dificultad general: {difficulty}) "
@@ -222,42 +227,131 @@ def _difficulty_label(index: int, total: int) -> str:
     return "avanzado"
 
 
+# Par verdadero/falso canónico que usa la interfaz.
+_TRUE_FALSE_OPTIONS = ["Verdadero", "Falso"]
+# Valores que, normalizados, se consideran verdadero/falso válidos.
+_TRUE_VALUES = {"verdadero", "true", "v"}
+_FALSE_VALUES = {"falso", "false", "f"}
+
+
+def _norm(value: Any) -> str:
+    """Normaliza un texto para comparaciones insensibles a mayúsculas/espacios."""
+    return str(value).strip().lower()
+
+
+def _normalize_true_false(correct: Any) -> str | None:
+    """Devuelve "Verdadero"/"Falso" si el valor es un verdadero/falso reconocible.
+
+    Si no corresponde a ninguno de los dos, devuelve None (la pregunta estaba
+    mal tipada como true_false).
+    """
+    if correct is None:
+        return None
+    key = _norm(correct)
+    if key in _TRUE_VALUES:
+        return "Verdadero"
+    if key in _FALSE_VALUES:
+        return "Falso"
+    return None
+
+
+def _dedup_options(options: list[Any], correct: Any) -> tuple[list[str], str | None]:
+    """Deduplica opciones (insensible a mayúsculas/espacios) y asegura la correcta.
+
+    Devuelve la lista de opciones limpias y la respuesta correcta tal como quedó
+    representada entre las opciones (para que coincida exactamente).
+    """
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for opt in options:
+        key = _norm(opt)
+        if key and key not in seen:
+            seen.add(key)
+            deduped.append(str(opt))
+    correct_text: str | None = None
+    if correct is not None:
+        correct_key = _norm(correct)
+        if correct_key:
+            if correct_key not in seen:
+                # La respuesta correcta faltaba: insertarla entre las opciones.
+                deduped.append(str(correct))
+                seen.add(correct_key)
+                correct_text = str(correct)
+            else:
+                # Recuperar el texto exacto de la opción que coincide.
+                for opt in deduped:
+                    if _norm(opt) == correct_key:
+                        correct_text = opt
+                        break
+    return deduped, correct_text
+
+
 def _sanitize_quiz_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Valida y normaliza las preguntas generadas antes de persistirlas.
 
-    Salvaguardas (robustez ante respuestas imperfectas del modelo):
-    - En multiple_choice elimina opciones duplicadas conservando el orden.
-    - Garantiza que correct_answer esté presente entre las opciones.
-    - Si tras deduplicar quedan menos de 2 opciones, conserva la pregunta sin
-      romper el flujo (no se descarta ni se lanza excepción).
-    - Fija el campo position (0-based) para que el orden fácil→avanzado sea
-      estable.
+    Salvaguardas (robustez ante respuestas imperfectas del modelo). El objetivo
+    es que nunca llegue a la interfaz una pregunta cuyo correct_answer no pueda
+    ser elegido por el estudiante (tipo/opciones/respuesta incoherentes):
+
+    - true_false: las opciones se fijan a ["Verdadero", "Falso"] y la respuesta
+      se normaliza a exactamente "Verdadero" o "Falso". Si la respuesta NO es un
+      verdadero/falso reconocible (p. ej. "he is not"), la pregunta estaba mal
+      tipada: se CONVIERTE a multiple_choice si tiene >=2 opciones distintas
+      útiles (incluida la correcta); si no las tiene, se DESCARTA.
+    - multiple_choice: deduplica opciones (insensible a mayúsculas/espacios),
+      inserta la respuesta correcta si falta y DESCARTA la pregunta si quedan
+      menos de 2 opciones distintas.
+    - open: se deja tal cual (no necesita opciones).
+    - Tras limpiar, reindexa position (0-based) sobre las preguntas que
+      sobreviven, preservando el orden fácil→avanzado.
+
+    Nunca lanza excepción por una pregunta inválida: la descarta y continúa.
     """
     clean: list[dict[str, Any]] = []
     for q in items:
         if not isinstance(q, dict):
             continue
         qtype = q.get("type")
-        options = q.get("options")
-        if qtype == "multiple_choice" and isinstance(options, list):
-            # Deduplicar preservando el orden de aparición.
-            seen: set[str] = set()
-            deduped: list[str] = []
-            for opt in options:
-                key = str(opt).strip().lower()
-                if key and key not in seen:
-                    seen.add(key)
-                    deduped.append(str(opt))
-            # Asegurar que la respuesta correcta esté entre las opciones.
-            correct = q.get("correct_answer")
-            if correct is not None:
-                correct_key = str(correct).strip().lower()
-                if correct_key and correct_key not in seen:
-                    deduped.append(str(correct))
-                    seen.add(correct_key)
+        correct = q.get("correct_answer")
+
+        if qtype == "true_false":
+            normalized = _normalize_true_false(correct)
+            if normalized is not None:
+                # Verdadero/falso coherente: fijar opciones canónicas.
+                q["options"] = list(_TRUE_FALSE_OPTIONS)
+                q["correct_answer"] = normalized
+                clean.append(q)
+                continue
+            # Mal tipada como true_false: intentar convertir a multiple_choice.
+            options = q.get("options")
+            if not isinstance(options, list):
+                options = []
+            deduped, correct_text = _dedup_options(options, correct)
+            if len(deduped) >= 2 and correct_text is not None:
+                q["type"] = "multiple_choice"
+                q["options"] = deduped
+                q["correct_answer"] = correct_text
+                clean.append(q)
+            # Sin opciones adecuadas: se descarta (mejor menos y correctas).
+            continue
+
+        if qtype == "multiple_choice":
+            options = q.get("options")
+            if not isinstance(options, list):
+                options = []
+            deduped, correct_text = _dedup_options(options, correct)
+            if len(deduped) < 2 or correct_text is None:
+                # No hay forma de que el estudiante elija la correcta: descartar.
+                continue
             q["options"] = deduped
+            q["correct_answer"] = correct_text
+            clean.append(q)
+            continue
+
+        # open u otros tipos: se dejan como están (no requieren opciones).
         clean.append(q)
 
+    # Reindexar position sobre las preguntas que sobrevivieron.
     for i, q in enumerate(clean):
         q["position"] = i
     return clean

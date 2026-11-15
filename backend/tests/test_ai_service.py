@@ -83,13 +83,29 @@ class TestQuizSanitizer:
             {
                 "type": "multiple_choice",
                 "statement": "¿Cuántos?",
+                # Cuatro opciones iguales colapsan a una sola: con <2 opciones
+                # distintas la pregunta se descarta (regla de robustez).
                 "options": ["dieciocho", "dieciocho", "dieciocho", "dieciocho"],
                 "correct_answer": "dieciocho",
             }
         ]
         out = _sanitize_quiz_items(items)
+        assert out == []
+
+    def test_dedup_keeps_question_with_two_distinct_options(self):
+        from app.services.ai_service import _sanitize_quiz_items
+
+        items = [
+            {
+                "type": "multiple_choice",
+                "statement": "¿Cuántos?",
+                "options": ["dieciocho", "dieciocho", "veinte", "veinte"],
+                "correct_answer": "dieciocho",
+            }
+        ]
+        out = _sanitize_quiz_items(items)
         opts = out[0]["options"]
-        assert opts == ["dieciocho"]
+        assert opts == ["dieciocho", "veinte"]
         assert out[0]["correct_answer"] in opts
         assert out[0]["position"] == 0
 
@@ -131,3 +147,121 @@ class TestQuizSanitizer:
         ]
         out = _sanitize_quiz_items(items)
         assert [q["position"] for q in out] == [0, 1]
+
+    def test_true_false_bad_answer_converts_to_multiple_choice(self):
+        # Bug reportado: type true_false con correct_answer "he is not".
+        # Si tiene opciones válidas, se convierte a multiple_choice.
+        from app.services.ai_service import _sanitize_quiz_items
+
+        items = [
+            {
+                "type": "true_false",
+                "statement": "He ___ at home.",
+                "options": ["is", "he is not", "are", "am"],
+                "correct_answer": "he is not",
+            }
+        ]
+        out = _sanitize_quiz_items(items)
+        assert len(out) == 1
+        assert out[0]["type"] == "multiple_choice"
+        assert out[0]["correct_answer"] in out[0]["options"]
+
+    def test_true_false_bad_answer_without_options_is_dropped(self):
+        # type true_false con respuesta no V/F y sin opciones útiles: descartar.
+        from app.services.ai_service import _sanitize_quiz_items
+
+        items = [
+            {
+                "type": "true_false",
+                "statement": "He ___ at home.",
+                "options": None,
+                "correct_answer": "he is not",
+            }
+        ]
+        out = _sanitize_quiz_items(items)
+        # Sin opciones y respuesta no V/F -> solo quedaría 1 opción (la correcta)
+        # -> no hay >=2 opciones usables -> se descarta.
+        assert out == []
+
+    def test_true_false_lowercase_answer_normalized(self):
+        from app.services.ai_service import _sanitize_quiz_items
+
+        items = [
+            {
+                "type": "true_false",
+                "statement": "El agua hierve a 100°C.",
+                "options": ["foo", "bar"],
+                "correct_answer": "verdadero",
+            }
+        ]
+        out = _sanitize_quiz_items(items)
+        assert out[0]["type"] == "true_false"
+        assert out[0]["correct_answer"] == "Verdadero"
+        assert out[0]["options"] == ["Verdadero", "Falso"]
+
+    def test_correct_answer_never_outside_options(self):
+        # Garantía global: ninguna pregunta sobreviviente tiene la respuesta
+        # correcta fuera de sus opciones.
+        from app.services.ai_service import _sanitize_quiz_items
+
+        items = [
+            {
+                "type": "true_false",
+                "statement": "X",
+                "options": ["alfa", "beta", "gamma"],
+                "correct_answer": "he is not",
+            },
+            {
+                "type": "multiple_choice",
+                "statement": "Y",
+                "options": ["a", "b", "c"],
+                "correct_answer": "z",
+            },
+            {"type": "open", "statement": "Z", "correct_answer": "texto libre"},
+        ]
+        out = _sanitize_quiz_items(items)
+        for q in out:
+            if q.get("options"):
+                assert q["correct_answer"] in q["options"]
+
+    def test_multiple_choice_dropped_when_too_few_options(self):
+        from app.services.ai_service import _sanitize_quiz_items
+
+        items = [
+            {
+                "type": "multiple_choice",
+                "statement": "P",
+                "options": ["solo"],
+                "correct_answer": "solo",
+            }
+        ]
+        out = _sanitize_quiz_items(items)
+        assert out == []
+
+    def test_position_reindexed_after_drops(self):
+        from app.services.ai_service import _sanitize_quiz_items
+
+        items = [
+            {
+                "type": "multiple_choice",
+                "statement": "ok1",
+                "options": ["a", "b", "c"],
+                "correct_answer": "a",
+            },
+            {
+                "type": "multiple_choice",
+                "statement": "roto",
+                "options": ["solo"],
+                "correct_answer": "solo",
+            },
+            {
+                "type": "multiple_choice",
+                "statement": "ok2",
+                "options": ["x", "y"],
+                "correct_answer": "x",
+            },
+        ]
+        out = _sanitize_quiz_items(items)
+        assert len(out) == 2
+        assert [q["position"] for q in out] == [0, 1]
+        assert [q["statement"] for q in out] == ["ok1", "ok2"]
